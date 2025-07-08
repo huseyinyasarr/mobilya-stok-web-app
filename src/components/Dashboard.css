@@ -1,0 +1,362 @@
+/* Dashboard Ana Ekran Stilleri */
+.dashboard {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.dashboard-header {
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content h1 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info span {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background: #e53e3e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: #c53030;
+}
+
+.dashboard-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+/* Kontrol Paneli */
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filters label {
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.category-select,
+.brand-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.add-product-btn {
+  padding: 12px 20px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.add-product-btn:hover {
+  background: #059669;
+}
+
+/* İstatistikler */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.stat-card h3 {
+  margin: 0 0 10px 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Kategori Detayları */
+.categories-detail,
+.brands-detail {
+  text-align: left !important;
+}
+
+.category-header,
+.brand-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 5px 0;
+  border-radius: 6px;
+}
+
+.category-header:hover,
+.brand-header:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.category-header h3,
+.brand-header h3 {
+  margin: 0;
+  pointer-events: none;
+}
+
+.toggle-icon {
+  font-size: 0.9rem;
+  color: #667eea;
+  transition: transform 0.3s ease;
+  font-weight: bold;
+  user-select: none;
+}
+
+.toggle-icon.open {
+  transform: rotate(180deg);
+}
+
+.category-breakdown,
+.brand-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 15px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.category-item,
+.brand-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.category-name,
+.brand-name {
+  font-weight: 500;
+  color: #4a5568;
+  text-transform: capitalize;
+  min-width: fit-content;
+}
+
+.category-count,
+.brand-count {
+  font-weight: 700;
+  color: #667eea;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.variety-count {
+  color: #38a169;
+  font-weight: 800;
+}
+
+.separator {
+  color: #718096;
+  margin: 0 1px;
+  font-weight: 600;
+}
+
+.total-count {
+  color: #667eea;
+  font-weight: 800;
+}
+
+.category-detail,
+.brand-detail {
+  font-size: 0.75rem;
+  color: #718096;
+  font-style: italic;
+  white-space: nowrap;
+  flex-basis: 100%;
+  text-align: right;
+  margin-top: 2px;
+}
+
+.no-categories,
+.no-brands {
+  color: #9ca3af;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Responsive Tasarım */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .filters {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-content {
+    padding: 20px 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    padding: 0 15px;
+  }
+
+  .user-info {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 20px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+
+  .category-item,
+  .brand-item {
+    padding: 8px 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .category-name,
+  .brand-name {
+    font-size: 0.9rem;
+  }
+
+  .category-count,
+  .brand-count {
+    font-size: 1rem;
+    align-self: flex-end;
+  }
+
+  .category-detail,
+  .brand-detail {
+    font-size: 0.7rem;
+    text-align: left;
+    align-self: flex-start;
+  }
+
+  .category-header {
+    padding: 8px 5px;
+  }
+
+  .toggle-icon {
+    font-size: 0.8rem;
+  }
+} 

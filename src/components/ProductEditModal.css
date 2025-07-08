@@ -1,0 +1,494 @@
+/* Edit Modal Backdrop */
+.edit-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* Modal Content */
+.edit-modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 950px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+  .edit-modal-content {
+    max-width: 1000px;
+  }
+}
+
+/* Modal Header */
+.edit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px 35px 0 35px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+}
+
+.edit-modal-header h2 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.edit-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.edit-close-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.edit-close-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Error Message */
+.edit-error-message {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 0 35px 20px 35px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Form Styles */
+.edit-product-form {
+  padding: 0 35px 35px 35px;
+}
+
+.edit-form-row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr;
+  gap: 25px;
+  margin-bottom: 20px;
+}
+
+.edit-form-group {
+  margin-bottom: 20px;
+}
+
+.edit-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.edit-form-group input,
+.edit-form-group select,
+.edit-form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #374151;
+  background: white;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.edit-form-group input:focus,
+.edit-form-group select:focus,
+.edit-form-group textarea:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.edit-form-group input:disabled,
+.edit-form-group select:disabled,
+.edit-form-group textarea:disabled {
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.edit-form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Variants Section */
+.edit-variants-section {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 25px;
+}
+
+.edit-variants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.edit-variants-header label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 1rem;
+}
+
+.edit-total-quantity {
+  font-size: 0.9rem;
+  color: #059669;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 6px 16px;
+  border-radius: 20px;
+}
+
+.edit-variants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.edit-variant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.edit-variant-inputs {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 1.8fr;
+  gap: 15px;
+  flex: 1;
+}
+
+.edit-variant-inputs input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.edit-variant-inputs input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+/* Quantity Container with +/- buttons */
+.edit-quantity-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  overflow: hidden;
+}
+
+.edit-quantity-container:focus-within {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+.edit-quantity-btn {
+  background: #f9fafb;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.edit-quantity-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.edit-quantity-btn:active:not(:disabled) {
+  background: #d1d5db;
+  transform: scale(0.95);
+}
+
+.edit-quantity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+}
+
+.edit-quantity-btn.minus {
+  border-right: 1px solid #e5e7eb;
+}
+
+.edit-quantity-btn.plus {
+  border-left: 1px solid #e5e7eb;
+}
+
+.edit-quantity-container .edit-quantity-input {
+  border: none;
+  flex: 1;
+  text-align: center;
+  font-weight: 500;
+  background: transparent;
+}
+
+.edit-quantity-container .edit-quantity-input:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.edit-remove-variant-btn {
+  padding: 10px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  min-width: 40px;
+}
+
+.edit-remove-variant-btn:hover:not(:disabled) {
+  background: #fecaca;
+  transform: scale(1.05);
+}
+
+.edit-remove-variant-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-add-variant-btn {
+  width: 100%;
+  padding: 12px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 2px dashed #10b981;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.edit-add-variant-btn:hover:not(:disabled) {
+  background: #d1fae5;
+  border-color: #059669;
+}
+
+.edit-add-variant-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form Actions */
+.edit-form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.edit-action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.edit-cancel-btn,
+.edit-submit-btn,
+.edit-delete-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.edit-cancel-btn {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.edit-cancel-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.edit-submit-btn {
+  background: #4CAF50;
+  color: white;
+}
+
+.edit-submit-btn:hover:not(:disabled) {
+  background: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.edit-delete-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.edit-delete-btn:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: #f87171;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.edit-cancel-btn:disabled,
+.edit-submit-btn:disabled,
+.edit-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .edit-modal-backdrop {
+    padding: 15px;
+  }
+
+  .edit-modal-content {
+    max-height: 95vh;
+    border-radius: 12px;
+    max-width: 95%;
+  }
+
+  .edit-modal-header {
+    padding: 25px 25px 0 25px;
+  }
+
+  .edit-modal-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .edit-product-form {
+    padding: 0 25px 25px 25px;
+  }
+
+  .edit-form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .edit-variants-section {
+    padding: 15px;
+  }
+
+  .edit-variant-row {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .edit-variant-inputs {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .edit-quantity-container {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  .edit-remove-variant-btn {
+    align-self: flex-end;
+    padding: 8px 16px;
+  }
+
+  .edit-form-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .edit-action-buttons {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .edit-cancel-btn,
+  .edit-submit-btn,
+  .edit-delete-btn {
+    width: 100%;
+    padding: 12px 20px;
+  }
+
+  .edit-error-message {
+    margin: 0 25px 16px 25px;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-modal-content {
+    border-radius: 8px;
+  }
+
+  .edit-modal-header {
+    padding: 15px 15px 0 15px;
+  }
+
+  .edit-product-form {
+    padding: 0 15px 15px 15px;
+  }
+
+  .edit-error-message {
+    margin: 0 15px 12px 15px;
+  }
+} 
