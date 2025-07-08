@@ -242,6 +242,477 @@
   }
 }
 
+/* Liste Görünümü Stilleri */
+.products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 25px;
+  background: #f8fafc;
+}
+
+.product-list-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  position: relative;
+  border-radius: 0;
+}
+
+.product-list-item:first-child {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.product-list-item:last-child {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.product-list-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e0;
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.list-item-content {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 20px;
+}
+
+.list-item-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  min-width: 0;
+}
+
+.list-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-item-name {
+  margin: 0 0 6px 0;
+  color: #1a202c;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.list-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.list-item-brand {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border: 1px solid #93c5fd;
+  white-space: nowrap;
+}
+
+.list-item-category {
+  background: #e2e8f0;
+  color: #4a5568;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.list-item-description {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.list-item-quantities {
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 180px;
+}
+
+/* Liste görünümü varyant bilgileri */
+.list-variants-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-total-quantity {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 3px;
+  min-height: 32px;
+}
+
+.list-quantity-label {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.list-quantity-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 5px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.list-variants-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: flex-end;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.list-variant-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.list-variant-color {
+  font-size: 0.75rem;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.list-variant-color strong {
+  color: #2d3748;
+  font-family: monospace;
+  background: #e2e8f0;
+  padding: 1px 3px;
+  border-radius: 2px;
+  font-size: 0.7rem;
+}
+
+.list-variant-quantity {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Eski sistem için liste görünümü */
+.list-quantity-info {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 32px;
+}
+
+
+
+/* Liste görünümü düzenleme butonu - masaüstü */
+.desktop-edit-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  color: #6b7280;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+}
+
+.desktop-edit-btn:hover {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Mobil düzenleme butonu - kutunun içinde gizli */
+.mobile-edit-btn {
+  display: none;
+}
+
+/* Liste görünümü responsive tasarım */
+@media (max-width: 768px) {
+  .products-list {
+    padding: 15px 10px;
+  }
+
+  .list-item-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .list-item-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .list-item-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Mobilde normal ürün adını gizle */
+  .list-item-name {
+    display: none;
+  }
+
+  /* Mobilde normal marka ve kategori etiketlerini gizle */
+  .list-item-meta {
+    display: none;
+  }
+
+  .list-item-quantities {
+    min-width: unset;
+    text-align: left;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    position: relative;
+    width: 100%;
+  }
+
+  /* Masaüstü düzenleme butonunu mobilde gizle */
+  .desktop-edit-btn {
+    display: none;
+  }
+
+  /* Mobil düzenleme butonu - inline olarak varyantlarla aynı hizada */
+  .mobile-edit-btn-inline {
+    display: flex !important;
+    background: #667eea;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 11px;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .mobile-edit-btn-inline:hover {
+    background: #5a67d8;
+    border-color: #5a67d8;
+    transform: scale(1.05);
+  }
+
+  /* Mobil başlık satırı (ürün adı + marka/kategori) */
+  .mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 10px;
+  }
+
+  .mobile-product-name {
+    margin: 0;
+    color: #1a202c;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  /* Mobil marka ve kategori etiketleri */
+  .mobile-meta {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .mobile-brand {
+    background: #dbeafe;
+    color: #1d4ed8;
+    padding: 1px 4px;
+    border-radius: 6px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    border: 1px solid #93c5fd;
+    white-space: nowrap;
+  }
+
+  .mobile-category {
+    background: #e2e8f0;
+    color: #4a5568;
+    padding: 1px 4px;
+    border-radius: 6px;
+    font-size: 0.6rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+
+  .list-total-quantity,
+  .list-quantity-info,
+  .quantity-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .list-variants-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: flex-start;
+    align-items: center;
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
+
+  .list-variant-item {
+    gap: 4px;
+    padding: 1px 4px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Masaüstünde mobil elementleri gizle */
+.mobile-header,
+.mobile-product-name,
+.mobile-meta,
+.mobile-edit-btn,
+.mobile-edit-btn-inline {
+  display: none;
+}
+
+/* Mobilde mobil elementleri göster */
+@media (max-width: 768px) {
+  .mobile-header,
+  .mobile-product-name,
+  .mobile-meta {
+    display: flex !important;
+  }
+  
+  .mobile-product-name {
+    display: block !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .products-list {
+    padding: 10px 8px;
+  }
+
+  .list-item-content {
+    padding: 8px 10px;
+  }
+
+  .mobile-product-name {
+    font-size: 1rem;
+  }
+
+  .list-item-meta {
+    gap: 6px;
+  }
+
+  .list-item-brand,
+  .list-item-category,
+  .mobile-brand,
+  .mobile-category {
+    font-size: 0.55rem;
+    padding: 1px 3px;
+  }
+
+  .list-quantity-value {
+    font-size: 1rem;
+  }
+
+  .list-variant-color {
+    font-size: 0.7rem;
+  }
+
+  .list-variant-color strong {
+    font-size: 0.65rem;
+  }
+
+  .list-variant-quantity {
+    font-size: 0.7rem;
+  }
+
+  .list-variant-item {
+    font-size: 0.65rem;
+    padding: 1px 3px;
+  }
+
+  .mobile-header {
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .mobile-meta {
+    gap: 4px;
+  }
+
+  .list-item-quantities {
+    padding: 6px 8px;
+  }
+
+  .mobile-edit-btn-inline {
+    min-width: 24px;
+    height: 22px;
+    padding: 2px 5px;
+    font-size: 11px;
+  }
+}
+
 /* Düzenleme Modu Stilleri */
 .product-card.editing {
   border: 2px solid #4CAF50;

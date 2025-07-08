@@ -16,6 +16,34 @@ function Dashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCategoryDetails, setShowCategoryDetails] = useState(false);
   const [showBrandDetails, setShowBrandDetails] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'grid' veya 'list'
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Mobil kontrolü için window width'i kontrol et
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Scroll durumunu takip et
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setIsScrolled(scrollTop > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Mobilde her zaman liste görünümü kullan
+  const currentViewMode = isMobile ? 'list' : viewMode;
 
   // Kategoriler listesi
   const categories = ['all', 'yatak', 'kanepe', 'koltuk', 'masa', 'sandalye', 'dolap', 'diğer'];
@@ -78,13 +106,15 @@ function Dashboard() {
   return (
     <div className="dashboard">
       {/* Header */}
-      <header className="dashboard-header">
+      <header className={`dashboard-header ${isScrolled && isMobile ? 'scrolled' : ''}`}>
         <div className="header-content">
           <h1>🪑 Mobilya Stok Takip</h1>
           <div className="user-info">
-            <span>Hoş geldin {currentUser.displayName}</span>
+            {(!isScrolled || !isMobile) && (
+              <span>Hoş geldin {currentUser.displayName}</span>
+            )}
             <button onClick={handleLogout} className="logout-btn">
-              Çıkış Yap
+              {isScrolled && isMobile ? '⏻' : 'Çıkış Yap'}
             </button>
           </div>
         </div>
@@ -126,6 +156,26 @@ function Dashboard() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="filter-group view-toggle-group">
+              <label htmlFor="view-toggle">Görünüm:</label>
+              <div className="view-toggle">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  title="Kutu Görünümü"
+                >
+                  ⚏
+                </button>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  title="Liste Görünümü"
+                >
+                  ☰
+                </button>
+              </div>
             </div>
           </div>
 
@@ -254,6 +304,7 @@ function Dashboard() {
           products={filteredProducts} 
           loading={loading}
           onProductsChange={fetchProducts}
+          viewMode={currentViewMode}
         />
 
         {/* Ürün Ekleme Formu Modal */}

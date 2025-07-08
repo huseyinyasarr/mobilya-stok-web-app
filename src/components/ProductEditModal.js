@@ -93,12 +93,8 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     // Varyant doğrulama
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
-      if (!variant.colorName.trim()) {
-        setError(`${i + 1}. rengin adı zorunludur`);
-        return false;
-      }
       if (variant.quantity < 0) {
-        setError(`${i + 1}. rengin adet sayısı geçerli olmalıdır`);
+        setError(`${i + 1}. varyantın adet sayısı geçerli olmalıdır`);
         return false;
       }
     }
@@ -278,7 +274,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
                   <div className="edit-variant-inputs">
                     <input
                       type="text"
-                      placeholder="Renk kodu (örn: 0046)"
+                      placeholder="Renk kodu (isteğe bağlı)"
                       value={variant.colorCode}
                       onChange={(e) => handleVariantChange(index, 'colorCode', e.target.value)}
                       disabled={loading}
@@ -286,7 +282,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
                     />
                     <input
                       type="text"
-                      placeholder="Renk adı (örn: Gri)"
+                      placeholder="Renk adı (isteğe bağlı)"
                       value={variant.colorName}
                       onChange={(e) => handleVariantChange(index, 'colorName', e.target.value)}
                       disabled={loading}
@@ -303,13 +299,14 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
                         −
                       </button>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="text"
                         placeholder="Adet"
                         value={variant.quantity}
                         onChange={(e) => handleVariantChange(index, 'quantity', e.target.value)}
-                        min="0"
                         disabled={loading}
                         className="edit-quantity-input"
+                        style={{ textAlign: 'center' }}
                       />
                       <button
                         type="button"

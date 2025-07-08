@@ -11,6 +11,13 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: all 0.3s ease;
+}
+
+/* Mobilde scroll edildiğinde kompakt header */
+.dashboard-header.scrolled {
+  padding: 0.5rem 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .header-content {
@@ -20,6 +27,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.3s ease;
+}
+
+/* Scrolled durumunda header content */
+.dashboard-header.scrolled .header-content {
+  padding: 0 15px;
 }
 
 .header-content h1 {
@@ -27,12 +40,19 @@
   color: #1a202c;
   font-size: 1.75rem;
   font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+/* Scrolled durumunda başlık küçülür */
+.dashboard-header.scrolled .header-content h1 {
+  font-size: 1.2rem;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: 15px;
+  transition: all 0.3s ease;
 }
 
 .user-info span {
@@ -48,11 +68,25 @@
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.2s ease;
+  transition: all 0.3s ease;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logout-btn:hover {
   background: #c53030;
+  transform: scale(1.05);
+}
+
+/* Scrolled durumunda çıkış butonu kompakt */
+.dashboard-header.scrolled .logout-btn {
+  padding: 6px 8px;
+  border-radius: 50%;
+  min-width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
 }
 
 .dashboard-content {
@@ -114,6 +148,47 @@
 
 .add-product-btn:hover {
   background: #059669;
+}
+
+/* Görünüm Toggle Butonları */
+.view-toggle {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.view-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  color: #6b7280;
+}
+
+.view-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.view-btn.active {
+  background: #667eea;
+  color: white;
+}
+
+.view-btn:first-child {
+  border-right: 1px solid #d1d5db;
+}
+
+.view-btn.active:first-child {
+  border-right-color: #667eea;
 }
 
 /* İstatistikler */
@@ -284,8 +359,26 @@
     text-align: center;
   }
 
+  /* Scrolled durumunda mobilde horizontal düzen */
+  .dashboard-header.scrolled .header-content {
+    flex-direction: row;
+    gap: 10px;
+    text-align: left;
+  }
+
   .header-content h1 {
     font-size: 1.5rem;
+  }
+
+  /* Scrolled durumunda mobilde daha küçük başlık */
+  .dashboard-header.scrolled .header-content h1 {
+    font-size: 1rem;
+  }
+
+  /* Scrolled durumunda user-info sağa yaslanır */
+  .dashboard-header.scrolled .user-info {
+    margin-left: auto;
+    gap: 8px;
   }
 
   .controls {
@@ -297,6 +390,16 @@
   .filters {
     justify-content: center;
     flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .filter-group {
+    min-width: fit-content;
+  }
+
+  /* Mobilde view toggle butonlarını gizle */
+  .view-toggle-group {
+    display: none;
   }
 
   .stats {
@@ -305,6 +408,11 @@
 
   .dashboard-content {
     padding: 20px 15px;
+  }
+
+  /* Scrolled durumunda content padding'i azalt */
+  .dashboard-header.scrolled + .dashboard-content {
+    padding-top: 15px;
   }
 }
 
@@ -316,6 +424,24 @@
   .user-info {
     flex-direction: column;
     gap: 10px;
+  }
+
+  /* Scrolled durumunda mobilde row düzeni */
+  .dashboard-header.scrolled .user-info {
+    flex-direction: row;
+    gap: 5px;
+  }
+
+  /* Scrolled durumunda başlık daha da küçük */
+  .dashboard-header.scrolled .header-content h1 {
+    font-size: 0.9rem;
+  }
+
+  /* Scrolled durumunda çıkış butonu daha küçük */
+  .dashboard-header.scrolled .logout-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 1rem;
   }
 
   .stat-card {

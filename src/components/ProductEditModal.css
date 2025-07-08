@@ -271,9 +271,33 @@
 .edit-quantity-container .edit-quantity-input {
   border: none;
   flex: 1;
-  text-align: center;
+  text-align: center !important;
   font-weight: 500;
   background: transparent;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+  -webkit-text-align-last: center !important;
+  text-align-last: center !important;
+}
+
+/* Tüm spinner'ları ve number input davranışlarını kaldır */
+.edit-quantity-input {
+  -webkit-appearance: none !important;
+  -moz-appearance: textfield !important;
+  appearance: none !important;
+}
+
+.edit-quantity-input::-webkit-outer-spin-button,
+.edit-quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+/* Input mode'u text yap */
+.edit-quantity-input {
+  inputmode: text !important;
 }
 
 .edit-quantity-container .edit-quantity-input:focus {
@@ -410,7 +434,7 @@
   }
 
   .edit-modal-header {
-    padding: 25px 25px 0 25px;
+    padding: 15px 15px 0 15px;
   }
 
   .edit-modal-header h2 {
@@ -418,7 +442,7 @@
   }
 
   .edit-product-form {
-    padding: 0 25px 25px 25px;
+    padding: 0 15px 15px 15px;
   }
 
   .edit-form-row {
@@ -427,7 +451,7 @@
   }
 
   .edit-variants-section {
-    padding: 15px;
+    padding: 10px;
   }
 
   .edit-variant-row {
@@ -440,11 +464,56 @@
     grid-template-columns: 1fr;
     gap: 8px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .edit-quantity-container {
-    max-width: 200px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    min-width: unset;
+    overflow: hidden;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  .edit-quantity-btn {
+    min-width: 48px;
+    padding: 12px 8px;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .edit-quantity-btn.plus {
+    margin-left: auto;
+  }
+
+  .edit-quantity-container .edit-quantity-input {
+    flex: 1;
+    min-width: 60px;
+    max-width: none;
+    margin: 0;
+    text-align: center !important;
+    font-weight: 500 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 12px 8px !important;
+    font-size: 16px !important;
+    color: #374151 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    
+    /* Tüm number input özelliklerini kaldır */
+    -webkit-appearance: none !important;
+    -moz-appearance: textfield !important;
+    appearance: none !important;
+    -webkit-text-fill-color: #374151 !important;
+    -webkit-opacity: 1 !important;
+    -webkit-text-align-last: center !important;
   }
 
   .edit-remove-variant-btn {
@@ -470,8 +539,8 @@
   }
 
   .edit-error-message {
-    margin: 0 25px 16px 25px;
-    padding: 10px 12px;
+    margin: 0 15px 12px 15px;
+    padding: 8px 10px;
   }
 }
 

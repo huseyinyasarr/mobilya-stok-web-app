@@ -71,16 +71,8 @@ function AddProductForm({ onClose, onProductAdded }) {
     // Varyant doğrulama
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
-      if (!variant.colorCode.trim()) {
-        setError(`${i + 1}. rengin kodu zorunludur`);
-        return false;
-      }
-      if (!variant.colorName.trim()) {
-        setError(`${i + 1}. rengin adı zorunludur`);
-        return false;
-      }
       if (!variant.quantity || variant.quantity < 0) {
-        setError(`${i + 1}. rengin adet sayısı geçerli olmalıdır`);
+        setError(`${i + 1}. varyantın adet sayısı geçerli olmalıdır`);
         return false;
       }
     }
@@ -200,7 +192,7 @@ function AddProductForm({ onClose, onProductAdded }) {
                 <div className="variant-inputs">
                   <input
                     type="text"
-                    placeholder="Renk kodu (örn: 0046)"
+                    placeholder="Renk kodu (isteğe bağlı)"
                     value={variant.colorCode}
                     onChange={(e) => handleVariantChange(index, 'colorCode', e.target.value)}
                     disabled={loading}
@@ -208,7 +200,7 @@ function AddProductForm({ onClose, onProductAdded }) {
                   />
                   <input
                     type="text"
-                    placeholder="Renk adı (örn: Gri)"
+                    placeholder="Renk adı (isteğe bağlı)"
                     value={variant.colorName}
                     onChange={(e) => handleVariantChange(index, 'colorName', e.target.value)}
                     disabled={loading}
