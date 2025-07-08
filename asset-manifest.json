@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/mobilya-stok-web-app/static/css/main.95ab6986.css",
+    "main.js": "/mobilya-stok-web-app/static/js/main.5d6a0837.js",
+    "static/js/453.4264808b.chunk.js": "/mobilya-stok-web-app/static/js/453.4264808b.chunk.js",
+    "index.html": "/mobilya-stok-web-app/index.html",
+    "main.95ab6986.css.map": "/mobilya-stok-web-app/static/css/main.95ab6986.css.map",
+    "main.5d6a0837.js.map": "/mobilya-stok-web-app/static/js/main.5d6a0837.js.map",
+    "453.4264808b.chunk.js.map": "/mobilya-stok-web-app/static/js/453.4264808b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.95ab6986.css",
+    "static/js/main.5d6a0837.js"
+  ]
+}
