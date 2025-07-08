@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
       // Popup ile giriş yap
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      
+
       // Email domain kontrolü
       if (!isEmailDomainAllowed(user.email)) {
         await signOut(auth); // Kullanıcıyı çıkart
@@ -129,8 +129,8 @@ export function AuthProvider({ children }) {
           console.log('Auth state değişti - kullanıcı çıkış yaptı');
         }
         
-        setCurrentUser(user);
-        setLoading(false);
+      setCurrentUser(user);
+      setLoading(false);
         
       } catch (error) {
         console.error('Auth state değişiklik hatası:', error);

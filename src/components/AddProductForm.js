@@ -85,15 +85,15 @@ function AddProductForm({ onClose, onProductAdded }) {
           validateInput.quantity(variant.quantity);
         } catch (validationError) {
           setError(`${i + 1}. renk: ${validationError.message}`);
-          return false;
-        }
+      return false;
+    }
       }
       
       const totalQty = getTotalQuantity();
       if (totalQty === 0) {
         setError('En az 1 adet ürün eklenmelidir');
-        return false;
-      }
+      return false;
+    }
       
       return {
         name: sanitizedName,
@@ -159,7 +159,7 @@ function AddProductForm({ onClose, onProductAdded }) {
       if (error.message.includes('Varyant')) {
         setError(error.message);
       } else {
-        setError('Ürün eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setError('Ürün eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
       }
     } finally {
       setLoading(false);
