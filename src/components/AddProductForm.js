@@ -2,12 +2,9 @@
 import React, { useState } from 'react';
 import { ref, push } from 'firebase/database';
 import { db } from '../firebase';
-import { validateInput, rateLimiter, checkFirebaseAuth } from '../utils/security';
-import { useAuth } from '../contexts/AuthContext';
 import './AddProductForm.css';
 
 function AddProductForm({ onClose, onProductAdded }) {
-  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -56,64 +53,53 @@ function AddProductForm({ onClose, onProductAdded }) {
     }, 0);
   };
 
-  // Güvenli form doğrulama
+  // Form doğrulama
   const validateForm = () => {
-    try {
-      // Kullanıcı authentication kontrolü
-      checkFirebaseAuth(currentUser);
-      
-      // Rate limiting kontrolü
-      rateLimiter.check('add_product', 5, 60000); // 5 ürün/dakika
-      
-      // Input sanitization ve validation
-      const sanitizedName = validateInput.productName(formData.name);
-      const sanitizedBrand = validateInput.brandName(formData.brand);
-      const sanitizedDescription = validateInput.description(formData.description);
-      
-      if (!formData.category) {
-        setError('Kategori seçimi zorunludur');
+    if (!formData.name.trim()) {
+      setError('Ürün adı zorunludur');
+      return false;
+    }
+    if (!formData.brand.trim()) {
+      setError('Marka adı zorunludur');
+      return false;
+    }
+    if (!formData.category) {
+      setError('Kategori seçimi zorunludur');
+      return false;
+    }
+    
+    // Varyant doğrulama
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      if (!variant.colorCode.trim()) {
+        setError(`${i + 1}. rengin kodu zorunludur`);
         return false;
       }
-      
-      // Varyant doğrulama
-      for (let i = 0; i < variants.length; i++) {
-        const variant = variants[i];
-        
-        try {
-          validateInput.colorCode(variant.colorCode);
-          validateInput.colorName(variant.colorName);
-          validateInput.quantity(variant.quantity);
-        } catch (validationError) {
-          setError(`${i + 1}. renk: ${validationError.message}`);
-      return false;
-    }
+      if (!variant.colorName.trim()) {
+        setError(`${i + 1}. rengin adı zorunludur`);
+        return false;
       }
-      
-      const totalQty = getTotalQuantity();
-      if (totalQty === 0) {
-        setError('En az 1 adet ürün eklenmelidir');
+      if (!variant.quantity || variant.quantity < 0) {
+        setError(`${i + 1}. rengin adet sayısı geçerli olmalıdır`);
+        return false;
+      }
+    }
+    
+    const totalQty = getTotalQuantity();
+    if (totalQty === 0) {
+      setError('En az 1 adet ürün eklenmelidir');
       return false;
     }
-      
-      return {
-        name: sanitizedName,
-        brand: sanitizedBrand,
-        description: sanitizedDescription
-      };
-      
-    } catch (securityError) {
-      setError(securityError.message);
-      return false;
-    }
+    
+    return true;
   };
 
-  // Güvenli form gönderme
+  // Form gönderme
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const validationResult = validateForm();
-    if (!validationResult) {
+    if (!validateForm()) {
       return;
     }
 
@@ -123,44 +109,29 @@ function AddProductForm({ onClose, onProductAdded }) {
       // Realtime Database'e yeni ürün ekle
       const productsRef = ref(db, 'products');
       
-      // Güvenli varyant sanitization
-      const cleanVariants = variants.map((variant, index) => {
-        try {
-          return {
-            colorCode: validateInput.colorCode(variant.colorCode),
-            colorName: validateInput.colorName(variant.colorName),
-            quantity: validateInput.quantity(variant.quantity)
-          };
-        } catch (err) {
-          throw new Error(`Varyant ${index + 1}: ${err.message}`);
-        }
-      });
+      // Varyantları temizle ve düzenle
+      const cleanVariants = variants.map(variant => ({
+        colorCode: variant.colorCode.trim(),
+        colorName: variant.colorName.trim(),
+        quantity: parseInt(variant.quantity)
+      }));
       
-      // Güvenli data object
-      const productData = {
-        name: validationResult.name,
-        brand: validationResult.brand,
+      await push(productsRef, {
+        name: formData.name.trim(),
+        brand: formData.brand.trim(),
         category: formData.category,
-        description: validationResult.description,
+        description: formData.description.trim(),
         variants: cleanVariants,
         totalQuantity: getTotalQuantity(),
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser.uid, // Güvenlik için kullanıcı ID'si
-        createdByEmail: currentUser.email
-      };
-      
-      await push(productsRef, productData);
+        createdAt: new Date().toISOString()
+      });
 
       // Başarı durumunda
       onProductAdded(); // Ürün listesini yenile
       onClose(); // Modal'ı kapat
     } catch (error) {
       console.error('Ürün eklenirken hata oluştu:', error);
-      if (error.message.includes('Varyant')) {
-        setError(error.message);
-      } else {
       setError('Ürün eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
-      }
     } finally {
       setLoading(false);
     }

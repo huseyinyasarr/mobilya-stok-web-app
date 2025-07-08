@@ -64,7 +64,7 @@ function ProductList({ products, loading, onProductsChange }) {
               </h3>
               <div className="product-meta">
                 {product.brand && <span className="product-brand">{product.brand}</span>}
-              <span className="product-category">{product.category}</span>
+                <span className="product-category">{product.category}</span>
               </div>
             </div>
 
@@ -100,12 +100,12 @@ function ProductList({ products, loading, onProductsChange }) {
                 </div>
               ) : (
                 /* Eski sistem - backward compatibility */
-              <div className="quantity-info">
-                <span className="quantity-label">Adet:</span>
-                <span className={`quantity-value ${getStockStatus(product.quantity)}`}>
-                  {product.quantity}
-                </span>
-              </div>
+                <div className="quantity-info">
+                  <span className="quantity-label">Adet:</span>
+                  <span className={`quantity-value ${getStockStatus(product.quantity)}`}>
+                    {product.quantity}
+                  </span>
+                </div>
               )}
 
               {product.description && (

@@ -33,7 +33,7 @@ function Dashboard() {
             id: key,
             ...data[key]
           }));
-      setProducts(productsData);
+          setProducts(productsData);
         } else {
           setProducts([]);
         }
@@ -95,20 +95,20 @@ function Dashboard() {
         <div className="controls">
           <div className="filters">
             <div className="filter-group">
-            <label htmlFor="category-filter">Kategori:</label>
-            <select 
-              id="category-filter"
-              value={selectedCategory} 
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="category-select"
-            >
-              <option value="all">Tüm Kategoriler</option>
-              {categories.slice(1).map(category => (
-                <option key={category} value={category}>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </option>
-              ))}
-            </select>
+              <label htmlFor="category-filter">Kategori:</label>
+              <select 
+                id="category-filter"
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="category-select"
+              >
+                <option value="all">Tüm Kategoriler</option>
+                {categories.slice(1).map(category => (
+                  <option key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </option>
+                ))}
+              </select>
             </div>
             
             <div className="filter-group">
@@ -237,7 +237,7 @@ function Dashboard() {
                       </span>
                       <span className="brand-detail">
                         ({brandCount} çeşit, {brandTotal} adet)
-            </span>
+                      </span>
                     </div>
                   );
                 })}

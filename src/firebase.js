@@ -3,39 +3,17 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 import { getAnalytics } from 'firebase/analytics';
-import productionFirebaseConfig from './firebase-config-production';
 
-// Firebase projesi ayarları - Akıllı Config Selection
-let firebaseConfig;
-
-// Environment variables mevcut mu kontrol et
-const hasEnvVars = process.env.REACT_APP_FIREBASE_API_KEY;
-
-if (hasEnvVars) {
-  // Geliştirme Modu: Environment Variables (Güvenli)
-  firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+// Firebase projesi ayarları - Environment Variables'dan alınır (fallback olarak gerçek değerler)
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDsX5K7-49OgRRNLk8_16kiDYOlO8ziRTI",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "mobilya-stok-takip.firebaseapp.com",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "mobilya-stok-takip",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "mobilya-stok-takip.firebasestorage.app",
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "580546235473",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:580546235473:web:18df095f586a893016fc70",
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "G-HKH4W4VRFV"
 };
-  console.log('🔧 Geliştirme Modu: Environment variables kullanılıyor');
-} else {
-  // Production Modu: Hardcoded Config (GitHub Pages için)
-  firebaseConfig = productionFirebaseConfig;
-  console.log('🚀 Production Modu: Hardcoded config kullanılıyor');
-}
-
-// Konfigürasyon doğrulama
-if (!firebaseConfig.apiKey) {
-  console.error('❌ Firebase konfigürasyonu eksik!');
-  throw new Error('Firebase konfigürasyonu bulunamadı');
-}
-
-console.log('✅ Firebase başarıyla yapılandırıldı');
 
 // Firebase uygulamasını başlat
 const app = initializeApp(firebaseConfig);

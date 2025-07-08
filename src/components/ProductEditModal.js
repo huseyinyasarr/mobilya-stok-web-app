@@ -2,12 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { ref, update, remove } from 'firebase/database';
 import { db } from '../firebase';
-import { validateInput, rateLimiter, checkFirebaseAuth } from '../utils/security';
-import { useAuth } from '../contexts/AuthContext';
 import './ProductEditModal.css';
 
 function ProductEditModal({ product, onClose, onProductUpdated }) {
-  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -78,95 +75,65 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     }, 0);
   };
 
-  // Güvenli form doğrulama
+  // Form doğrulama
   const validateForm = () => {
-    try {
-      // Kullanıcı authentication kontrolü
-      checkFirebaseAuth(currentUser);
-      
-      // Rate limiting kontrolü (edit için daha az kısıtlayıcı)
-      rateLimiter.check('edit_product', 10, 60000); // 10 edit/dakika
-      
-      // Input sanitization ve validation
-      const sanitizedName = validateInput.productName(formData.name);
-      const sanitizedBrand = validateInput.brandName(formData.brand);
-      const sanitizedDescription = validateInput.description(formData.description);
-      
-      if (!formData.category) {
-        setError('Kategori seçimi zorunludur');
-        return false;
-      }
-      
-      // Varyant doğrulama
-      for (let i = 0; i < variants.length; i++) {
-        const variant = variants[i];
-        
-        try {
-          validateInput.colorCode(variant.colorCode);
-          validateInput.colorName(variant.colorName);
-          validateInput.quantity(variant.quantity);
-        } catch (validationError) {
-          setError(`${i + 1}. renk: ${validationError.message}`);
-          return false;
-        }
-      }
-      
-      return {
-        name: sanitizedName,
-        brand: sanitizedBrand,
-        description: sanitizedDescription
-      };
-      
-    } catch (securityError) {
-      setError(securityError.message);
+    if (!formData.name.trim()) {
+      setError('Ürün adı zorunludur');
       return false;
     }
+    if (!formData.brand.trim()) {
+      setError('Marka adı zorunludur');
+      return false;
+    }
+    if (!formData.category) {
+      setError('Kategori seçimi zorunludur');
+      return false;
+    }
+    
+    // Varyant doğrulama
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      if (!variant.colorName.trim()) {
+        setError(`${i + 1}. rengin adı zorunludur`);
+        return false;
+      }
+      if (variant.quantity < 0) {
+        setError(`${i + 1}. rengin adet sayısı geçerli olmalıdır`);
+        return false;
+      }
+    }
+    
+    return true;
   };
 
-  // Güvenli form gönderme
+  // Form gönderme
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const validationResult = validateForm();
-    if (!validationResult) {
+    if (!validateForm()) {
       return;
     }
 
     try {
       setLoading(true);
-      
-      // Ownership kontrolü (ürünün sahibi mi?)
-      if (product.createdBy && product.createdBy !== currentUser.uid) {
-        throw new Error('Bu ürünü düzenleme yetkiniz yok');
-      }
-      
       const productRef = ref(db, `products/${product.id}`);
       
-      // Güvenli varyant sanitization
-      const cleanVariants = variants.map((variant, index) => {
-        try {
-          return {
-            colorCode: validateInput.colorCode(variant.colorCode),
-            colorName: validateInput.colorName(variant.colorName),
-            quantity: validateInput.quantity(variant.quantity)
-          };
-        } catch (err) {
-          throw new Error(`Varyant ${index + 1}: ${err.message}`);
-        }
-      });
+      // Temizlenmiş varyantları hazırla
+      const cleanVariants = variants.map(variant => ({
+        colorCode: variant.colorCode.trim(),
+        colorName: variant.colorName.trim(),
+        quantity: parseInt(variant.quantity) || 0
+      }));
       
-      // Güvenli güncelleme verisi
+      // Güncelleme verisi
       const updateData = {
-        name: validationResult.name,
-        brand: validationResult.brand,
+        name: formData.name.trim(),
+        brand: formData.brand.trim(),
         category: formData.category,
-        description: validationResult.description,
+        description: formData.description.trim(),
         variants: cleanVariants,
-        totalQuantity: getTotalQuantity(),
-        lastUpdatedAt: new Date().toISOString(),
-        lastUpdatedBy: currentUser.uid,
-        lastUpdatedByEmail: currentUser.email
+        totalQuantity: getTotalQuantity()
       };
       
       // Eski sistemi temizle
@@ -179,37 +146,21 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
       
     } catch (error) {
       console.error('Ürün güncellenirken hata oluştu:', error);
-      if (error.message.includes('yetkiniz') || error.message.includes('Varyant')) {
-        setError(error.message);
-      } else {
-        setError('Ürün güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
-      }
+      setError('Ürün güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Güvenli ürün silme işlemi
+  // Ürün silme işlemi
   const handleDeleteProduct = async () => {
-    try {
-      // Kullanıcı authentication kontrolü
-      checkFirebaseAuth(currentUser);
-      
-      // Rate limiting kontrolü (silme işlemi için daha sıkı)
-      rateLimiter.check('delete_product', 3, 60000); // 3 silme/dakika
-      
-      // Ownership kontrolü (ürünün sahibi mi?)
-      if (product.createdBy && product.createdBy !== currentUser.uid) {
-        setError('Bu ürünü silme yetkiniz yok');
-        return;
-      }
-      
-      const confirmMessage = `"${product.name}" ürününü silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`;
-      
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
+    const confirmMessage = `"${product.name}" ürününü silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
 
+    try {
       setLoading(true);
       const productRef = ref(db, `products/${product.id}`);
       await remove(productRef);
@@ -219,11 +170,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
       
     } catch (error) {
       console.error('Ürün silinirken hata oluştu:', error);
-      if (error.message.includes('yetkiniz') || error.message.includes('fazla deneme')) {
-        setError(error.message);
-      } else {
-        setError('Ürün silinirken bir hata oluştu. Lütfen tekrar deneyin.');
-      }
+      setError('Ürün silinirken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
