@@ -30,6 +30,33 @@
   transition: all 0.3s ease;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.back-btn {
+  padding: 8px 16px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+}
+
+.back-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  transform: translateX(-2px);
+}
+
 /* Scrolled durumunda header content */
 .dashboard-header.scrolled .header-content {
   padding: 0 15px;
@@ -359,11 +386,26 @@
     text-align: center;
   }
 
+  .header-left {
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .back-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
   /* Scrolled durumunda mobilde horizontal düzen */
   .dashboard-header.scrolled .header-content {
     flex-direction: row;
     gap: 10px;
     text-align: left;
+  }
+
+  .dashboard-header.scrolled .header-left {
+    gap: 8px;
+    justify-content: flex-start;
   }
 
   .header-content h1 {

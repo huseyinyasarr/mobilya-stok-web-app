@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import ProductList from './ProductList';
 import AddProductForm from './AddProductForm';
+import CategorySelection from './CategorySelection';
 import { ref, onValue, orderByChild, query } from 'firebase/database';
 import { db } from '../firebase';
 import './Dashboard.css';
@@ -18,6 +19,7 @@ function Dashboard() {
   const [showBrandDetails, setShowBrandDetails] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'grid' veya 'list'
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showCategorySelection, setShowCategorySelection] = useState(true); // Kategori seçim ekranını kontrol eder
 
   // Mobil kontrolü için window width'i kontrol et
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -94,6 +96,19 @@ function Dashboard() {
   // Mevcut markaları al
   const availableBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
 
+  // Kategori seçimi yapıldığında
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setShowCategorySelection(false);
+  };
+
+  // Kategori seçim ekranına geri dön
+  const handleBackToCategories = () => {
+    setShowCategorySelection(true);
+    setSelectedCategory('all');
+    setSelectedBrand('all');
+  };
+
   // Çıkış yapma
   const handleLogout = async () => {
     try {
@@ -108,7 +123,14 @@ function Dashboard() {
       {/* Header */}
       <header className={`dashboard-header ${isScrolled && isMobile ? 'scrolled' : ''}`}>
         <div className="header-content">
-          <h1>🪑 Mobilya Stok Takip</h1>
+          <div className="header-left">
+            {!showCategorySelection && (
+              <button onClick={handleBackToCategories} className="back-btn">
+                ← Kategorilere Dön
+              </button>
+            )}
+            <h1>🪑 Mobilya Stok Takip</h1>
+          </div>
           <div className="user-info">
             {(!isScrolled || !isMobile) && (
               <span>Hoş geldin {currentUser.displayName}</span>
@@ -121,8 +143,17 @@ function Dashboard() {
       </header>
 
       <div className="dashboard-content">
-        {/* Kontrol Paneli */}
-        <div className="controls">
+        {/* Kategori Seçim Ekranı veya Ürün Listesi */}
+        {showCategorySelection ? (
+          <CategorySelection 
+            categories={categories}
+            onCategorySelect={handleCategorySelect}
+            products={products}
+          />
+        ) : (
+          <>
+            {/* Kontrol Paneli */}
+            <div className="controls">
           <div className="filters">
             <div className="filter-group">
               <label htmlFor="category-filter">Kategori:</label>
@@ -307,12 +338,14 @@ function Dashboard() {
           viewMode={currentViewMode}
         />
 
-        {/* Ürün Ekleme Formu Modal */}
-        {showAddForm && (
-          <AddProductForm 
-            onClose={() => setShowAddForm(false)}
-            onProductAdded={fetchProducts}
-          />
+            {/* Ürün Ekleme Formu Modal */}
+            {showAddForm && (
+              <AddProductForm 
+                onClose={() => setShowAddForm(false)}
+                onProductAdded={fetchProducts}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
