@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "products": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "logs": {
+      ".read": "auth != null", 
+      ".write": "auth != null",
+      "$logId": {
+        ".validate": "!data.exists() || newData.exists()"
+      }
+    }
+  }
+} 

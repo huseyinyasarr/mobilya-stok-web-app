@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import ProductEditModal from './ProductEditModal';
 import './ProductList.css';
 
-function ProductList({ products, loading, onProductsChange, viewMode = 'grid' }) {
+function ProductList({ products, loading, onProductsChange, viewMode = 'grid', searchQuery = '', sortBy = 'alphabetical' }) {
   const [editModalProduct, setEditModalProduct] = useState(null);
 
   // Modal işlemleri
@@ -35,6 +35,230 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid' })
     );
   };
 
+  // Tarih formatı
+  const formatDate = (timestamp) => {
+    if (!timestamp) return null;
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    
+    if (diffInMinutes < 1) {
+      return 'Az önce güncellendi';
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} dakika önce güncellendi`;
+    } else if (diffInMinutes < 1440) { // 24 saat
+      const hours = Math.floor(diffInMinutes / 60);
+      return `${hours} saat önce güncellendi`;
+    } else {
+      return `${date.toLocaleDateString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+      })} tarihinde güncellendi`;
+    }
+  };
+
+  // Sıralama fonksiyonu
+  const getSortedProducts = (products, sortType) => {
+    if (!products || !Array.isArray(products) || products.length === 0) return [];
+    
+    const sortedProducts = [...products];
+    
+    switch (sortType) {
+      case 'alphabetical':
+        return sortedProducts.sort((a, b) => {
+          const nameA = (a?.name || '').toLowerCase();
+          const nameB = (b?.name || '').toLowerCase();
+          return nameA.localeCompare(nameB, 'tr-TR');
+        });
+        
+      case 'date-newest':
+        return sortedProducts.sort((a, b) => {
+          const dateA = new Date(a?.lastUpdated || a?.createdAt || 0);
+          const dateB = new Date(b?.lastUpdated || b?.createdAt || 0);
+          return dateB - dateA; // En yeni önce
+        });
+        
+      case 'date-oldest':
+        return sortedProducts.sort((a, b) => {
+          const dateA = new Date(a?.lastUpdated || a?.createdAt || 0);
+          const dateB = new Date(b?.lastUpdated || b?.createdAt || 0);
+          return dateA - dateB; // En eski önce
+        });
+
+      case 'relevance':
+        // Arama sonuçları zaten score'a göre sıralı gelir
+        return sortedProducts;
+        
+      default:
+        return sortedProducts;
+    }
+  };
+
+  // String benzerlik hesaplama (Jaro-Winkler benzeri)
+  const calculateSimilarity = (str1, str2) => {
+    if (typeof str1 !== 'string' || typeof str2 !== 'string') return 0;
+    if (str1 === str2) return 1;
+    if (str1.length === 0 || str2.length === 0) return 0;
+    
+    const matches = [];
+    const s1_matches = new Array(str1.length).fill(false);
+    const s2_matches = new Array(str2.length).fill(false);
+    
+    const match_distance = Math.floor(Math.max(str1.length, str2.length) / 2) - 1;
+    let matches_count = 0;
+    
+    // Eşleşmeleri bul
+    for (let i = 0; i < str1.length; i++) {
+      const start = Math.max(0, i - match_distance);
+      const end = Math.min(i + match_distance + 1, str2.length);
+      
+      for (let j = start; j < end; j++) {
+        if (s2_matches[j] || str1[i] !== str2[j]) continue;
+        s1_matches[i] = s2_matches[j] = true;
+        matches.push(str1[i]);
+        matches_count++;
+        break;
+      }
+    }
+    
+    if (matches_count === 0) return 0;
+    
+    // Transpozisyonları hesapla
+    let transpositions = 0;
+    let k = 0;
+    for (let i = 0; i < str1.length; i++) {
+      if (!s1_matches[i]) continue;
+      while (!s2_matches[k]) k++;
+      if (str1[i] !== str2[k]) transpositions++;
+      k++;
+    }
+    
+    const jaro = (matches_count / str1.length + matches_count / str2.length + 
+                  (matches_count - transpositions / 2) / matches_count) / 3;
+    
+    return jaro;
+  };
+
+  // Akıllı arama fonksiyonu
+  const getSearchResults = (products, query) => {
+    if (!products || !Array.isArray(products)) return [];
+    if (!query || query.trim() === '') return products;
+    
+    const searchTerms = query.toLowerCase()
+      .split(' ')
+      .filter(term => term.length > 0);
+    
+    if (searchTerms.length === 0) return products;
+    
+    // Her ürün için relevance score hesapla
+    const scoredProducts = products.map(product => {
+      if (!product || typeof product !== 'object') {
+        return { ...product, searchScore: 0 };
+      }
+      
+      const productText = `${product.name || ''} ${product.brand || ''} ${product.category || ''}`.toLowerCase();
+      const words = productText.split(' ').filter(word => word.length > 0);
+      
+      let totalScore = 0;
+      let foundTerms = 0;
+      
+      searchTerms.forEach(term => {
+        let bestScore = 0;
+        let termFound = false;
+        
+        words.forEach(word => {
+          if (word === term) {
+            // Tam kelime eşleşmesi
+            bestScore = Math.max(bestScore, 100);
+            termFound = true;
+          } else if (word.startsWith(term)) {
+            // Kelime başlangıcı eşleşmesi
+            bestScore = Math.max(bestScore, 80);
+            termFound = true;
+          } else if (word.includes(term)) {
+            // Kelime içi eşleşme
+            bestScore = Math.max(bestScore, 50);
+            termFound = true;
+          } else if (term.length >= 3) {
+            // Fuzzy matching
+            const similarity = calculateSimilarity(term, word);
+            if (similarity > 0.7) {
+              bestScore = Math.max(bestScore, similarity * 40);
+              termFound = true;
+            }
+          }
+        });
+        
+        if (termFound) {
+          foundTerms++;
+          totalScore += bestScore;
+        }
+      });
+      
+      // En az terimlerin yarısı bulunmuş olmalı
+      const relevanceThreshold = foundTerms >= Math.ceil(searchTerms.length / 2);
+      
+      return {
+        ...product,
+        searchScore: relevanceThreshold ? totalScore : 0
+      };
+    });
+    
+    // Score'a göre filtrele ve sırala
+    return scoredProducts
+      .filter(product => product.searchScore > 0)
+      .sort((a, b) => b.searchScore - a.searchScore);
+  };
+
+  // Loading durumu kontrolü
+  if (loading) {
+    return (
+      <div className="product-list-container">
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Ürünler yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Products yoksa boş array kullan
+  const safeProducts = products || [];
+
+  // Ürün yoksa empty state göster
+  if (safeProducts.length === 0) {
+    return (
+      <div className="product-list-container">
+        <div className="empty-state">
+          <div className="empty-icon">📦</div>
+          <h3>Henüz ürün eklenmemiş</h3>
+          <p>İlk ürününüzü eklemek için "Yeni Ürün Ekle" butonunu kullanın.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Önce arama sonuçlarını al, sonra sırala
+  const searchResults = getSearchResults(safeProducts, searchQuery);
+  const finalProducts = getSortedProducts(searchResults, searchQuery ? 'relevance' : sortBy);
+
+  // Arama sonucunda ürün bulunamadı
+  if (searchQuery && finalProducts.length === 0) {
+    return (
+      <div className="product-list-container">
+        <div className="search-empty-state">
+          <div className="empty-icon">🔍</div>
+          <h3>Arama sonucu bulunamadı</h3>
+          <p>
+            "<strong>{searchQuery}</strong>" için eşleşen ürün bulunamadı.<br/>
+            Farklı kelimeler deneyebilir veya aramayı temizleyebilirsiniz.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Liste görünümü için ürün render fonksiyonu
   const renderListItem = (product) => (
     <div key={product.id} className="product-list-item">
@@ -50,7 +274,7 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid' })
               <p className="list-item-description">{product.description}</p>
             )}
           </div>
-          
+        
           <div className="list-item-quantities">
             {/* Yeni varyant sistemi */}
             {product.variants && product.variants.length > 0 ? (
@@ -100,8 +324,6 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid' })
                     ✏️
                   </button>
                 </div>
-
-                {/* Eski absolute düzenleme butonunu kaldır */}
               </div>
             ) : (
               /* Eski sistem - backward compatibility */
@@ -130,8 +352,6 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid' })
                     ✏️
                   </button>
                 </div>
-
-                {/* Eski absolute düzenleme butonunu kaldır */}
               </div>
             )}
           </div>
@@ -146,6 +366,13 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid' })
           ✏️
         </button>
       </div>
+      
+      {/* Son güncelleme tarihi - Kutunun en alt kısmında */}
+      {(product.lastUpdated || product.createdAt) && (
+        <div className="list-item-date-bottom">
+          {formatDate(product.lastUpdated || product.createdAt)}
+        </div>
+      )}
     </div>
   );
 
@@ -213,44 +440,47 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid' })
             <p title="Düzenlemek için tıklayın">{product.description}</p>
           </div>
         )}
+
+        {/* Son güncelleme tarihi */}
+        {(product.lastUpdated || product.createdAt) && (
+          <div className="product-date">
+            {formatDate(product.lastUpdated || product.createdAt)}
+          </div>
+        )}
       </div>
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="product-list-container">
-        <div className="loading">
-          <div className="loading-spinner"></div>
-          <p>Ürünler yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="product-list-container">
-        <div className="empty-state">
-          <div className="empty-icon">📦</div>
-          <h3>Henüz ürün eklenmemiş</h3>
-          <p>İlk ürününüzü eklemek için "Yeni Ürün Ekle" butonunu kullanın.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="product-list-container">
-      <h2>Ürün Listesi ({products.length} ürün)</h2>
+      <div className="product-list-header">
+        <h2>
+          Ürün Listesi ({finalProducts.length}
+          {searchQuery && finalProducts.length !== safeProducts.length ? ` / ${safeProducts.length}` : ''} ürün)
+        </h2>
+        
+        {searchQuery && (
+          <div className="search-info">
+            {finalProducts.length > 0 ? (
+              <span className="search-results-count">
+                "{searchQuery}" için {finalProducts.length} sonuç bulundu
+              </span>
+            ) : (
+              <span className="no-results">
+                "{searchQuery}" için sonuç bulunamadı
+              </span>
+            )}
+          </div>
+        )}
+      </div>
       
       {viewMode === 'grid' ? (
         <div className="products-grid">
-          {products.map(renderGridItem)}
+          {finalProducts.map(renderGridItem)}
         </div>
       ) : (
         <div className="products-list">
-          {products.map(renderListItem)}
+          {finalProducts.map(renderListItem)}
         </div>
       )}
 

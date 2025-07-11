@@ -29,7 +29,7 @@ function CategorySelection({ categories, onCategorySelect, products }) {
   // Kategori başlığını al
   const getCategoryTitle = (category) => {
     if (category === 'all') return 'Tüm Ürünler';
-    if (category === 'koltuk') return 'Koltuk/Kanepe';
+    if (category === 'koltuk') return 'Koltuk';
     return category.charAt(0).toUpperCase() + category.slice(1);
   };
 

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ProductList from './ProductList';
 import AddProductForm from './AddProductForm';
 import CategorySelection from './CategorySelection';
+import ActivityLogs from './ActivityLogs';
 import { ref, onValue, orderByChild, query } from 'firebase/database';
 import { db } from '../firebase';
 import './Dashboard.css';
@@ -20,6 +21,9 @@ function Dashboard() {
   const [viewMode, setViewMode] = useState('list'); // 'grid' veya 'list'
   const [isScrolled, setIsScrolled] = useState(false);
   const [showCategorySelection, setShowCategorySelection] = useState(true); // Kategori seçim ekranını kontrol eder
+  const [showActivityLogs, setShowActivityLogs] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // Arama sorgusu
+  const [sortBy, setSortBy] = useState('alphabetical'); // Sıralama seçeneği
 
   // Mobil kontrolü için window width'i kontrol et
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -96,6 +100,21 @@ function Dashboard() {
   // Mevcut markaları al
   const availableBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
 
+  // Arama işlevi değiştiğinde
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Arama temizleme
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  // Sıralama seçimi değiştiğinde
+  const handleSortChange = (e) => {
+    setSortBy(e.target.value);
+  };
+
   // Kategori seçimi yapıldığında
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
@@ -107,6 +126,7 @@ function Dashboard() {
     setShowCategorySelection(true);
     setSelectedCategory('all');
     setSelectedBrand('all');
+    setSearchQuery(''); // Arama sorgusunu temizle
   };
 
   // Çıkış yapma
@@ -125,15 +145,50 @@ function Dashboard() {
         <div className="header-content">
           <div className="header-left">
             {!showCategorySelection && (
-              <button onClick={handleBackToCategories} className="back-btn">
-                ← Kategorilere Dön
+              <button onClick={handleBackToCategories} className="back-btn" title="Kategorilere Dön">
+                ←
               </button>
             )}
-            <h1>🪑 Mobilya Stok Takip</h1>
+            <h1>🪑 Şeref Mobilya</h1>
           </div>
+          
+          {/* Search Bar - sadece kategori seçili değilse göster */}
+          {!showCategorySelection && (
+            <div className="header-search">
+              <div className="search-input-container">
+                <input
+                  type="text"
+                  placeholder="Ürün ara..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="header-search-input"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="header-clear-search-btn"
+                    title="Aramayı temizle"
+                  >
+                    ✕
+                  </button>
+                )}
+                <div className="header-search-icon">🔍</div>
+              </div>
+            </div>
+          )}
+          
           <div className="user-info">
             {(!isScrolled || !isMobile) && (
-              <span>Hoş geldin {currentUser.displayName}</span>
+              <span>{currentUser.displayName}</span>
+            )}
+            {!showCategorySelection && (
+              <button 
+                onClick={() => setShowActivityLogs(true)} 
+                className="logs-btn"
+                title="İşlem Geçmişi"
+              >
+                {isScrolled && isMobile ? '📋' : '📋 Geçmiş'}
+              </button>
             )}
             <button onClick={handleLogout} className="logout-btn">
               {isScrolled && isMobile ? '⏻' : 'Çıkış Yap'}
@@ -152,191 +207,199 @@ function Dashboard() {
           />
         ) : (
           <>
-            {/* Kontrol Paneli */}
-            <div className="controls">
-          <div className="filters">
-            <div className="filter-group">
-              <label htmlFor="category-filter">Kategori:</label>
-              <select 
-                id="category-filter"
-                value={selectedCategory} 
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="category-select"
-              >
-                <option value="all">Tüm Kategoriler</option>
-                {categories.slice(1).map(category => (
-                  <option key={category} value={category}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="filter-group">
-              <label htmlFor="brand-filter">Marka:</label>
-              <select 
-                id="brand-filter"
-                value={selectedBrand} 
-                onChange={(e) => setSelectedBrand(e.target.value)}
-                className="brand-select"
-              >
-                <option value="all">Tüm Markalar</option>
-                {availableBrands.map(brand => (
-                  <option key={brand} value={brand}>
-                    {brand}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Kontrol Paneli - Arama yaparken gizle */}
+            <div className={`controls ${searchQuery ? 'search-hidden' : ''}`}>
+                <div className="filters">
+                  <div className="filter-group">
+                    <label htmlFor="category-filter">Kategori:</label>
+                    <select 
+                      id="category-filter"
+                      value={selectedCategory} 
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="category-select"
+                    >
+                      <option value="all">Tüm Kategoriler</option>
+                      {categories.slice(1).map(category => (
+                        <option key={category} value={category}>
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="filter-group">
+                    <label htmlFor="brand-filter">Marka:</label>
+                    <select 
+                      id="brand-filter"
+                      value={selectedBrand} 
+                      onChange={(e) => setSelectedBrand(e.target.value)}
+                      className="brand-select"
+                    >
+                      <option value="all">Tüm Markalar</option>
+                      {availableBrands.map(brand => (
+                        <option key={brand} value={brand}>
+                          {brand}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="filter-group">
+                    <label htmlFor="sort-filter">Sıralama:</label>
+                    <select 
+                      id="sort-filter"
+                      value={sortBy} 
+                      onChange={handleSortChange}
+                      className="sort-select"
+                    >
+                      <option value="alphabetical">Alfabetik (A-Z)</option>
+                      <option value="date-newest">Tarihe Göre (En Yeni)</option>
+                      <option value="date-oldest">Tarihe Göre (En Eski)</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div className="filter-group view-toggle-group">
-              <label htmlFor="view-toggle">Görünüm:</label>
-              <div className="view-toggle">
                 <button 
-                  onClick={() => setViewMode('grid')}
-                  className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                  title="Kutu Görünümü"
+                  onClick={() => setShowAddForm(true)}
+                  className="add-product-btn"
                 >
-                  ⚏
-                </button>
-                <button 
-                  onClick={() => setViewMode('list')}
-                  className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                  title="Liste Görünümü"
-                >
-                  ☰
+                  + Yeni Ürün Ekle
                 </button>
               </div>
-            </div>
-          </div>
 
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className="add-product-btn"
-          >
-            + Yeni Ürün Ekle
-          </button>
-        </div>
-
-        {/* İstatistikler */}
-        <div className="stats">
-          <div className="stat-card">
-            <h3>Toplam Ürün Sayısı</h3>
-            <span className="stat-number">
-              {products.reduce((total, product) => {
-                // Yeni varyant sistemi
-                if (product.variants && product.variants.length > 0) {
-                  return total + (product.totalQuantity || 0);
-                }
-                // Eski sistem - backward compatibility
-                return total + (product.quantity || 0);
-              }, 0)}
-            </span>
-          </div>
-          <div className="stat-card">
-            <h3>Kaç Kalem Ürün Var</h3>
-            <span className="stat-number">{products.length}</span>
-          </div>
-          <div className="stat-card categories-detail">
-            <div 
-              className="category-header" 
-              onClick={() => setShowCategoryDetails(!showCategoryDetails)}
-            >
-              <h3>Kategori Detayları</h3>
-              <span className={`toggle-icon ${showCategoryDetails ? 'open' : ''}`}>▼</span>
-            </div>
-            
-            {showCategoryDetails && (
-              <div className="category-breakdown">
-                {categories.slice(1).map(category => {
-                  const categoryProducts = products.filter(p => p.category === category);
-                  const categoryCount = categoryProducts.length; // Kaç çeşit ürün var
-                  const categoryTotal = categoryProducts.reduce((total, product) => {
+            {/* İstatistikler - Arama yaparken gizle */}
+            <div className={`stats ${searchQuery ? 'search-hidden' : ''}`}>
+              <div className="stat-card">
+                <h3>Toplam Ürün Sayısı</h3>
+                <span className="stat-number">
+                  {products.reduce((total, product) => {
                     // Yeni varyant sistemi
                     if (product.variants && product.variants.length > 0) {
                       return total + (product.totalQuantity || 0);
                     }
                     // Eski sistem - backward compatibility
                     return total + (product.quantity || 0);
-                  }, 0);
-                  if (categoryTotal === 0) return null;
-                  return (
-                    <div key={category} className="category-item">
-                      <span className="category-name">
-                        {category.charAt(0).toUpperCase() + category.slice(1)}:
-                      </span>
-                      <span className="category-count">
-                        <span className="variety-count">{categoryCount}</span>
-                        <span className="separator">/</span>
-                        <span className="total-count">{categoryTotal}</span>
-                      </span>
-                      <span className="category-detail">
-                        ({categoryCount} çeşit, {categoryTotal} adet)
-                      </span>
-                    </div>
-                  );
-                })}
-                {products.length === 0 && (
-                  <span className="no-categories">Henüz ürün yok</span>
+                  }, 0)}
+                </span>
+              </div>
+              <div className="stat-card">
+                <h3>Kaç Kalem Ürün Var</h3>
+                <span className="stat-number">{products.length}</span>
+              </div>
+              <div className="stat-card categories-detail">
+                <div 
+                  className="category-header" 
+                  onClick={() => setShowCategoryDetails(!showCategoryDetails)}
+                >
+                  <h3>Kategori Detayları</h3>
+                  <span className={`toggle-icon ${showCategoryDetails ? 'open' : ''}`}>▼</span>
+                </div>
+                
+                {showCategoryDetails && (
+                  <div className="category-breakdown">
+                    {categories.slice(1).map(category => {
+                      const categoryProducts = products.filter(p => p.category === category);
+                      const categoryCount = categoryProducts.length; // Kaç çeşit ürün var
+                      const categoryTotal = categoryProducts.reduce((total, product) => {
+                        // Yeni varyant sistemi
+                        if (product.variants && product.variants.length > 0) {
+                          return total + (product.totalQuantity || 0);
+                        }
+                        // Eski sistem - backward compatibility
+                        return total + (product.quantity || 0);
+                      }, 0);
+                      if (categoryTotal === 0) return null;
+                      return (
+                        <div key={category} className="category-item">
+                          <span className="category-name">
+                            {category.charAt(0).toUpperCase() + category.slice(1)}:
+                          </span>
+                          <span className="category-count">
+                            <span className="variety-count">{categoryCount}</span>
+                            <span className="separator">/</span>
+                            <span className="total-count">{categoryTotal}</span>
+                          </span>
+                          <span className="category-detail">
+                            ({categoryCount} çeşit, {categoryTotal} adet)
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {products.length === 0 && (
+                      <span className="no-categories">Henüz ürün yok</span>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-          
-          <div className="stat-card brands-detail">
-            <div 
-              className="brand-header" 
-              onClick={() => setShowBrandDetails(!showBrandDetails)}
-            >
-              <h3>Marka Detayları</h3>
-              <span className={`toggle-icon ${showBrandDetails ? 'open' : ''}`}>▼</span>
+              
+              <div className="stat-card brands-detail">
+                <div 
+                  className="brand-header" 
+                  onClick={() => setShowBrandDetails(!showBrandDetails)}
+                >
+                  <h3>Marka Detayları</h3>
+                  <span className={`toggle-icon ${showBrandDetails ? 'open' : ''}`}>▼</span>
+                </div>
+                
+                {showBrandDetails && (
+                  <div className="brand-breakdown">
+                    {availableBrands.map(brand => {
+                      const brandProducts = products.filter(p => p.brand === brand);
+                      const brandCount = brandProducts.length; // Kaç çeşit ürün var
+                      const brandTotal = brandProducts.reduce((total, product) => {
+                        // Yeni varyant sistemi
+                        if (product.variants && product.variants.length > 0) {
+                          return total + (product.totalQuantity || 0);
+                        }
+                        // Eski sistem - backward compatibility
+                        return total + (product.quantity || 0);
+                      }, 0);
+                      if (brandTotal === 0) return null;
+                      return (
+                        <div key={brand} className="brand-item">
+                          <span className="brand-name">
+                            {brand}:
+                          </span>
+                          <span className="brand-count">
+                            <span className="variety-count">{brandCount}</span>
+                            <span className="separator">/</span>
+                            <span className="total-count">{brandTotal}</span>
+                          </span>
+                          <span className="brand-detail">
+                            ({brandCount} çeşit, {brandTotal} adet)
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {availableBrands.length === 0 && (
+                      <span className="no-brands">Henüz marka yok</span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            
-            {showBrandDetails && (
-              <div className="brand-breakdown">
-                {availableBrands.map(brand => {
-                  const brandProducts = products.filter(p => p.brand === brand);
-                  const brandCount = brandProducts.length; // Kaç çeşit ürün var
-                  const brandTotal = brandProducts.reduce((total, product) => {
-                    // Yeni varyant sistemi
-                    if (product.variants && product.variants.length > 0) {
-                      return total + (product.totalQuantity || 0);
-                    }
-                    // Eski sistem - backward compatibility
-                    return total + (product.quantity || 0);
-                  }, 0);
-                  if (brandTotal === 0) return null;
-                  return (
-                    <div key={brand} className="brand-item">
-                      <span className="brand-name">
-                        {brand}:
-                      </span>
-                      <span className="brand-count">
-                        <span className="variety-count">{brandCount}</span>
-                        <span className="separator">/</span>
-                        <span className="total-count">{brandTotal}</span>
-                      </span>
-                      <span className="brand-detail">
-                        ({brandCount} çeşit, {brandTotal} adet)
-                      </span>
-                    </div>
-                  );
-                })}
-                {availableBrands.length === 0 && (
-                  <span className="no-brands">Henüz marka yok</span>
-                )}
+
+            {/* Arama yaparken kompakt yeni ürün ekleme butonu */}
+            {searchQuery && (
+              <div className="search-mode-controls">
+                <button 
+                  onClick={() => setShowAddForm(true)}
+                  className="add-product-btn-compact"
+                >
+                  + Yeni Ürün Ekle
+                </button>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Ürün Listesi */}
-        <ProductList 
-          products={filteredProducts} 
-          loading={loading}
-          onProductsChange={fetchProducts}
-          viewMode={currentViewMode}
-        />
+            {/* Ürün Listesi */}
+            <ProductList 
+              products={filteredProducts} 
+              loading={loading}
+              onProductsChange={fetchProducts}
+              viewMode={currentViewMode}
+              searchQuery={searchQuery}
+              sortBy={sortBy}
+            />
 
             {/* Ürün Ekleme Formu Modal */}
             {showAddForm && (
@@ -344,6 +407,11 @@ function Dashboard() {
                 onClose={() => setShowAddForm(false)}
                 onProductAdded={fetchProducts}
               />
+            )}
+            
+            {/* İşlem Geçmişi Modal */}
+            {showActivityLogs && (
+              <ActivityLogs onClose={() => setShowActivityLogs(false)} />
             )}
           </>
         )}

@@ -2,9 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { ref, update, remove } from 'firebase/database';
 import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
+import { createLog, LOG_ACTIONS } from '../utils/logging';
 import './ProductEditModal.css';
 
 function ProductEditModal({ product, onClose, onProductUpdated }) {
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -122,6 +125,15 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
         quantity: parseInt(variant.quantity) || 0
       }));
       
+      // Değişiklikleri tespit et
+      const oldTotalQuantity = product.totalQuantity || product.quantity || 0;
+      const newTotalQuantity = getTotalQuantity();
+      const nameChanged = product.name !== formData.name.trim();
+      const categoryChanged = product.category !== formData.category;
+      
+      // Varyant değişikliklerini detaylı analiz et
+      const variantChanges = analyzeVariantChanges(product.variants || [], cleanVariants);
+
       // Güncelleme verisi
       const updateData = {
         name: formData.name.trim(),
@@ -129,13 +141,40 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
         category: formData.category,
         description: formData.description.trim(),
         variants: cleanVariants,
-        totalQuantity: getTotalQuantity()
+        totalQuantity: newTotalQuantity,
+        lastUpdated: new Date().toISOString()
       };
       
       // Eski sistemi temizle
       updateData.quantity = null;
       
       await update(productRef, updateData);
+      
+      // Log kaydı oluştur - sadece değişiklik varsa
+      const logDetails = {};
+      if (oldTotalQuantity !== newTotalQuantity) {
+        logDetails.quantityChange = { from: oldTotalQuantity, to: newTotalQuantity };
+      }
+      if (nameChanged) logDetails.nameChanged = true;
+      if (categoryChanged) logDetails.categoryChanged = true;
+      if (variantChanges.hasChanges) {
+        logDetails.variantChanges = variantChanges.changes;
+      }
+
+      if (Object.keys(logDetails).length > 0) {
+        await createLog(
+          LOG_ACTIONS.PRODUCT_UPDATED,
+          currentUser,
+          {
+            id: product.id,
+            name: formData.name.trim(),
+            brand: formData.brand.trim(),
+            category: formData.category,
+            totalQuantity: newTotalQuantity
+          },
+          logDetails
+        );
+      }
       
       onProductUpdated(); // Ürün listesini yenile
       onClose(); // Modal'ı kapat
@@ -159,6 +198,20 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     try {
       setLoading(true);
       const productRef = ref(db, `products/${product.id}`);
+      
+      // Silme işleminden önce log kaydı oluştur
+      await createLog(
+        LOG_ACTIONS.PRODUCT_DELETED,
+        currentUser,
+        {
+          id: product.id,
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          totalQuantity: product.totalQuantity || product.quantity || 0
+        }
+      );
+      
       await remove(productRef);
       
       onProductUpdated(); // Ürün listesini yenile
@@ -179,6 +232,73 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     }
   };
 
+  // Varyant değişikliklerini detaylı analiz eden fonksiyon
+  const analyzeVariantChanges = (oldVariants, newVariants) => {
+    const changes = {
+      added: [],
+      modified: [],
+      removed: []
+    };
+    
+    // Varyantları karşılaştırmak için unique key oluştur
+    const getVariantKey = (variant) => `${variant.colorCode || ''}_${variant.colorName || ''}`;
+    
+    // Eski varyantları map'e çevir
+    const oldVariantMap = new Map();
+    (oldVariants || []).forEach(variant => {
+      const key = getVariantKey(variant);
+      oldVariantMap.set(key, variant);
+    });
+    
+    // Yeni varyantları map'e çevir
+    const newVariantMap = new Map();
+    newVariants.forEach(variant => {
+      const key = getVariantKey(variant);
+      newVariantMap.set(key, variant);
+    });
+    
+    // Yeni eklenen varyantları bul
+    newVariantMap.forEach((newVariant, key) => {
+      if (!oldVariantMap.has(key)) {
+        changes.added.push({
+          colorCode: newVariant.colorCode || '',
+          colorName: newVariant.colorName || '',
+          quantity: newVariant.quantity
+        });
+      }
+    });
+    
+    // Miktarı değişen varyantları bul
+    oldVariantMap.forEach((oldVariant, key) => {
+      if (newVariantMap.has(key)) {
+        const newVariant = newVariantMap.get(key);
+        if (oldVariant.quantity !== newVariant.quantity) {
+          changes.modified.push({
+            colorCode: newVariant.colorCode || '',
+            colorName: newVariant.colorName || '',
+            oldQuantity: oldVariant.quantity,
+            newQuantity: newVariant.quantity
+          });
+        }
+      }
+    });
+    
+    // Silinen varyantları bul
+    oldVariantMap.forEach((oldVariant, key) => {
+      if (!newVariantMap.has(key)) {
+        changes.removed.push({
+          colorCode: oldVariant.colorCode || '',
+          colorName: oldVariant.colorName || '',
+          quantity: oldVariant.quantity
+        });
+      }
+    });
+    
+    const hasChanges = changes.added.length > 0 || changes.modified.length > 0 || changes.removed.length > 0;
+    
+    return { hasChanges, changes };
+  };
+
   if (!product) return null;
 
   return (
@@ -196,6 +316,16 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
         </div>
 
         {error && <div className="edit-error-message">{error}</div>}
+
+        {/* Ürünü Ekleyen Bilgisi */}
+        {product.createdBy && (
+          <div className="edit-created-by">
+            <span className="edit-created-by-label">Ürünü Ekleyen:</span>
+            <span className="edit-created-by-user">
+              {product.createdBy.displayName || product.createdBy.email}
+            </span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="edit-product-form">
           <div className="edit-form-row">

@@ -29,7 +29,7 @@ function Login() {
       } else if (error.code === 'auth/popup-blocked') {
         setError('Pop-up engellendi. Lütfen pop-up engelleyiciyi kapatın.');
       } else {
-        setError('Giriş yaparken bir hata oluştu. Lütfen tekrar deneyin.');
+        setError('Yetkiniz yok. Lütfen yöneticinize başvurunuz.');
       }
     } finally {
       setLoading(false);

@@ -2,9 +2,12 @@
 import React, { useState } from 'react';
 import { ref, push } from 'firebase/database';
 import { db } from '../firebase';
-import './AddProductForm.css';
+import { useAuth } from '../contexts/AuthContext';
+import { createLog, LOG_ACTIONS } from '../utils/logging';
+import './ProductEditModal.css';
 
 function AddProductForm({ onClose, onProductAdded }) {
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -108,15 +111,36 @@ function AddProductForm({ onClose, onProductAdded }) {
         quantity: parseInt(variant.quantity)
       }));
       
-      await push(productsRef, {
+      const newProductData = {
         name: formData.name.trim(),
         brand: formData.brand.trim(),
         category: formData.category,
         description: formData.description.trim(),
         variants: cleanVariants,
         totalQuantity: getTotalQuantity(),
-        createdAt: new Date().toISOString()
-      });
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        createdBy: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı'
+        }
+      };
+
+      const newProductRef = await push(productsRef, newProductData);
+      
+      // Log kaydı oluştur
+      await createLog(
+        LOG_ACTIONS.PRODUCT_CREATED,
+        currentUser,
+        {
+          id: newProductRef.key,
+          name: newProductData.name,
+          brand: newProductData.brand,
+          category: newProductData.category,
+          totalQuantity: newProductData.totalQuantity
+        }
+      );
 
       // Başarı durumunda
       onProductAdded(); // Ürün listesini yenile
@@ -137,126 +161,73 @@ function AddProductForm({ onClose, onProductAdded }) {
   };
 
   return (
-    <div className="modal-backdrop" onClick={handleBackdropClick}>
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>Yeni Ürün Ekle</h2>
+    <div className="edit-modal-backdrop" onClick={handleBackdropClick}>
+      <div className="edit-modal-content">
+        <div className="edit-modal-header">
+          <h2>➕ Yeni Ürün Ekle</h2>
           <button 
             onClick={onClose} 
-            className="close-btn"
+            className="edit-close-btn"
             disabled={loading}
           >
             ✕
           </button>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="edit-error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="add-product-form">
-          <div className="form-group">
-            <label htmlFor="name">Ürün Adı *</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              placeholder="Örn: 90x190 Stress Out"
-              disabled={loading}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="brand">Marka *</label>
-            <input
-              type="text"
-              id="brand"
-              name="brand"
-              value={formData.brand}
-              onChange={handleInputChange}
-              placeholder="Örn: Özgür, Vivinza"
-              disabled={loading}
-              required
-            />
-          </div>
-
-          <div className="form-group variants-section">
-            <div className="variants-header">
-              <label>Renk Çeşitleri *</label>
-              <span className="total-quantity">Toplam: {getTotalQuantity()} adet</span>
+        <form onSubmit={handleSubmit} className="edit-product-form">
+          <div className="edit-form-row">
+            <div className="edit-form-group">
+              <label htmlFor="name">Ürün Adı *</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Örn: 90x190 Stress Out"
+                disabled={loading}
+                required
+              />
             </div>
-            
-            {variants.map((variant, index) => (
-              <div key={index} className="variant-row">
-                <div className="variant-inputs">
-                  <input
-                    type="text"
-                    placeholder="Renk kodu (isteğe bağlı)"
-                    value={variant.colorCode}
-                    onChange={(e) => handleVariantChange(index, 'colorCode', e.target.value)}
-                    disabled={loading}
-                    className="color-code-input"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Renk adı (isteğe bağlı)"
-                    value={variant.colorName}
-                    onChange={(e) => handleVariantChange(index, 'colorName', e.target.value)}
-                    disabled={loading}
-                    className="color-name-input"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Adet"
-                    value={variant.quantity}
-                    onChange={(e) => handleVariantChange(index, 'quantity', e.target.value)}
-                    min="0"
-                    disabled={loading}
-                    className="quantity-input"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeVariant(index)}
-                  disabled={loading || variants.length === 1}
-                  className="remove-variant-btn"
-                  title="Bu rengi sil"
-                >
-                  Sil
-                </button>
-              </div>
-            ))}
-            
-            <button
-              type="button"
-              onClick={addVariant}
-              disabled={loading}
-              className="add-variant-btn"
-            >
-              + Yeni Renk Ekle
-            </button>
+
+            <div className="edit-form-group">
+              <label htmlFor="brand">Marka *</label>
+              <input
+                type="text"
+                id="brand"
+                name="brand"
+                value={formData.brand}
+                onChange={handleInputChange}
+                placeholder="Örn: Özgür, Vivinza"
+                disabled={loading}
+                required
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="category">Kategori *</label>
-            <select
-              id="category"
-              name="category"
-              value={formData.category}
-              onChange={handleInputChange}
-              disabled={loading}
-              required
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </option>
-              ))}
-            </select>
+          <div className="edit-form-row">
+            <div className="edit-form-group">
+              <label htmlFor="category">Kategori *</label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                disabled={loading}
+                required
+              >
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="form-group">
+          <div className="edit-form-group">
             <label htmlFor="description">Açıklama</label>
             <textarea
               id="description"
@@ -269,22 +240,105 @@ function AddProductForm({ onClose, onProductAdded }) {
             />
           </div>
 
-          <div className="form-actions">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="cancel-btn"
+          {/* Renk Çeşitleri */}
+          <div className="edit-variants-section">
+            <div className="edit-variants-header">
+              <label>Renk Çeşitleri *</label>
+              <span className="edit-total-quantity">Toplam: {getTotalQuantity()} adet</span>
+            </div>
+            
+            <div className="edit-variants-list">
+              {variants.map((variant, index) => (
+                <div key={index} className="edit-variant-row">
+                  <div className="edit-variant-inputs">
+                    <input
+                      type="text"
+                      placeholder="Renk kodu (isteğe bağlı)"
+                      value={variant.colorCode}
+                      onChange={(e) => handleVariantChange(index, 'colorCode', e.target.value)}
+                      disabled={loading}
+                      className="edit-color-code-input"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Renk adı (isteğe bağlı)"
+                      value={variant.colorName}
+                      onChange={(e) => handleVariantChange(index, 'colorName', e.target.value)}
+                      disabled={loading}
+                      className="edit-color-name-input"
+                    />
+                    <div className="edit-quantity-container">
+                      <button
+                        type="button"
+                        onClick={() => handleVariantChange(index, 'quantity', Math.max(0, (parseInt(variant.quantity) || 0) - 1))}
+                        disabled={loading || (parseInt(variant.quantity) || 0) === 0}
+                        className="edit-quantity-btn minus"
+                        title="Azalt (-1)"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="text"
+                        placeholder="Adet"
+                        value={variant.quantity}
+                        onChange={(e) => handleVariantChange(index, 'quantity', e.target.value)}
+                        disabled={loading}
+                        className="edit-quantity-input"
+                        style={{ textAlign: 'center' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleVariantChange(index, 'quantity', (parseInt(variant.quantity) || 0) + 1)}
+                        disabled={loading}
+                        className="edit-quantity-btn plus"
+                        title="Artır (+1)"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeVariant(index)}
+                    disabled={loading || variants.length === 1}
+                    className="edit-remove-variant-btn"
+                    title="Bu rengi sil"
+                  >
+                    Sil
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            <button
+              type="button"
+              onClick={addVariant}
               disabled={loading}
+              className="edit-add-variant-btn"
             >
-              İptal
+              + Yeni Renk Ekle
             </button>
-            <button 
-              type="submit" 
-              className="submit-btn"
-              disabled={loading}
-            >
-              {loading ? 'Ekleniyor...' : 'Ürün Ekle'}
-            </button>
+          </div>
+
+          <div className="edit-form-actions">
+            <div className="edit-action-buttons">
+              <button 
+                type="button" 
+                onClick={onClose}
+                className="edit-cancel-btn"
+                disabled={loading}
+              >
+                İptal
+              </button>
+              <button 
+                type="submit" 
+                className="edit-submit-btn"
+                disabled={loading}
+              >
+                {loading ? 'Ekleniyor...' : 'Ürün Ekle'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
