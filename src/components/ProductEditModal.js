@@ -35,8 +35,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
   const [stockChangeReason, setStockChangeReason] = useState('');
   const [stockChangeDescription, setStockChangeDescription] = useState('');
 
-  // Stok değişikliği modu (eski sistem - kullanılmayacak)
-  const [stockChangeMode, setStockChangeMode] = useState(false);
+
 
   // Kategori seçenekleri
   const categories = [
@@ -342,10 +341,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     onClose();
   };
 
-  // Eski stok değişikliği fonksiyonu (kullanılmayacak)
-  const handleStockChange = async () => {
-    // Bu fonksiyon artık kullanılmayacak
-  };
+
 
   // Form doğrulama
   const validateForm = () => {
