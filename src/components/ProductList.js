@@ -260,8 +260,13 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
   }
 
   // Liste görünümü için ürün render fonksiyonu
-  const renderListItem = (product) => (
-    <div key={product.id} className="product-list-item">
+  const renderListItem = (product) => {
+    const totalQuantity = product.totalQuantity || product.quantity || 0;
+    const isOutOfStock = totalQuantity === 0;
+    const itemClass = `product-list-item ${isOutOfStock ? 'out-of-stock-item' : ''}`;
+    
+    return (
+      <div key={product.id} className={itemClass}>
       <div className="list-item-content">
         <div className="list-item-main">
           <div className="list-item-info">
@@ -375,10 +380,16 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
       )}
     </div>
   );
+  };
 
   // Grid görünümü için ürün render fonksiyonu (mevcut tasarım)
-  const renderGridItem = (product) => (
-    <div key={product.id} className="product-card">
+  const renderGridItem = (product) => {
+    const totalQuantity = product.totalQuantity || product.quantity || 0;
+    const isOutOfStock = totalQuantity === 0;
+    const cardClass = `product-card ${isOutOfStock ? 'out-of-stock-item' : ''}`;
+    
+    return (
+      <div key={product.id} className={cardClass}>
       <div className="product-header" onClick={() => openEditModal(product)}>
         <h3 className="product-name" title="Düzenlemek için tıklayın">
           {product.name} ✏️
@@ -450,6 +461,7 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
       </div>
     </div>
   );
+  };
 
   return (
     <div className="product-list-container">

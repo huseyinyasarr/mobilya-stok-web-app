@@ -112,6 +112,287 @@
   padding: 0 35px 35px 35px;
 }
 
+/* Stok Yönetimi Stilleri */
+.edit-stock-management {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.stock-header h3 {
+  margin: 0;
+  color: #374151;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.stock-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.view-history-btn,
+.stock-change-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-history-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.view-history-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.stock-change-btn {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.stock-change-btn:hover:not(:disabled) {
+  background: #5a67d8;
+  border-color: #5a67d8;
+}
+
+/* Stok Geçmişi */
+.stock-history {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.stock-history h4 {
+  margin: 0 0 15px 0;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stock-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.stock-entry {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+}
+
+.stock-entry.increase {
+  border-left: 4px solid #10b981;
+  background: #f0fdf4;
+}
+
+.stock-entry.decrease {
+  border-left: 4px solid #ef4444;
+  background: #fef2f2;
+}
+
+.stock-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.stock-type {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.stock-type.increase {
+  color: #059669;
+}
+
+.stock-type.decrease {
+  color: #dc2626;
+}
+
+.stock-date {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.stock-entry-details {
+  margin: 0;
+}
+
+.stock-reason {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+  color: #374151;
+  font-weight: 500;
+  white-space: pre-line; /* Çok satırlı metinleri düzgün göster */
+  line-height: 1.4;
+}
+
+.stock-user {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.no-stock-history {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  margin: 20px 0;
+}
+
+/* Stok Değişikliği Formu */
+.stock-change-form {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.stock-change-form h4 {
+  margin: 0 0 15px 0;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stock-change-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stock-change-type,
+.stock-change-amount,
+.stock-change-reason,
+.stock-change-description {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stock-change-reason,
+.stock-change-description {
+  grid-column: span 2;
+}
+
+.stock-change-form label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.stock-change-form select,
+.stock-change-form input {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  color: #374151;
+}
+
+.stock-change-form select:focus,
+.stock-change-form input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.stock-description-text {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.stock-description-text:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.stock-change-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cancel-stock-btn,
+.save-stock-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.cancel-stock-btn {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+
+.cancel-stock-btn:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.save-stock-btn {
+  background: #28a745;
+  color: white;
+}
+
+.save-stock-btn:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.cancel-stock-btn:disabled,
+.save-stock-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .edit-form-row {
   display: grid;
   grid-template-columns: 2fr 1.5fr;
@@ -457,6 +738,74 @@
     max-width: 95%;
   }
 
+  /* Stok Yönetimi Mobil */
+  .edit-stock-management {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .stock-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .stock-actions {
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .view-history-btn,
+  .stock-change-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .stock-history {
+    padding: 12px;
+  }
+
+  .stock-history-list {
+    max-height: 250px;
+  }
+
+  .stock-entry {
+    padding: 10px;
+  }
+
+  .stock-entry-header {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .stock-change-form {
+    padding: 12px;
+  }
+
+  .stock-change-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stock-change-reason,
+  .stock-change-description {
+    grid-column: span 1;
+  }
+
+  .stock-change-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cancel-stock-btn,
+  .save-stock-btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+
   .edit-modal-header {
     padding: 15px 15px 0 15px;
   }
@@ -595,5 +944,271 @@
     margin: 0 15px 10px 15px;
     padding: 6px 8px;
     font-size: 0.75rem;
+  }
+} 
+
+/* Stok bilgilendirme mesajı */
+.stock-info-text {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 5px;
+  font-size: 0.9em;
+  color: #1565c0;
+  line-height: 1.4;
+}
+
+/* Stok Nedeni Modal'ı */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  position: relative;
+  animation: slideIn 0.3s ease-out;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.stock-reason-modal {
+  max-width: 500px;
+  width: 100%;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.stock-reason-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.stock-reason-modal .modal-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.2em;
+}
+
+.stock-reason-modal .modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.stock-reason-modal .modal-close-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.stock-reason-modal .modal-body {
+  padding: 20px;
+}
+
+.stock-change-info {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border-left: 4px solid #007bff;
+}
+
+.stock-change-info p {
+  margin: 5px 0;
+  color: #495057;
+}
+
+.stock-change-info strong {
+  color: #212529;
+}
+
+.stock-reason-form .form-group {
+  margin-bottom: 15px;
+}
+
+.stock-reason-form .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.stock-reason-form .form-group select,
+.stock-reason-form .form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.stock-reason-form .form-group select:focus,
+.stock-reason-form .form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.stock-description-textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.stock-reason-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.stock-reason-modal .btn-cancel {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.stock-reason-modal .btn-cancel:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.stock-reason-modal .btn-primary {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.stock-reason-modal .btn-primary:hover {
+  background-color: #218838;
+}
+
+.stock-reason-modal .btn-cancel:disabled,
+.stock-reason-modal .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobil uyumluluk */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 15px;
+  }
+  
+  .stock-reason-modal {
+    max-width: 100%;
+    max-height: 85vh;
+  }
+  
+  .stock-reason-modal .modal-header,
+  .stock-reason-modal .modal-body,
+  .stock-reason-modal .modal-footer {
+    padding: 15px;
+  }
+  
+  .stock-reason-modal .modal-header h3 {
+    font-size: 1.1em;
+  }
+  
+  .stock-info-text {
+    font-size: 0.85em;
+    padding: 8px;
+  }
+  
+  .stock-change-info {
+    padding: 12px;
+  }
+  
+  .stock-reason-modal .modal-footer {
+    flex-direction: column;
+  }
+  
+  .stock-reason-modal .btn-cancel,
+  .stock-reason-modal .btn-primary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+  
+  .stock-reason-modal {
+    max-height: 90vh;
+  }
+  
+  .stock-reason-modal .modal-header,
+  .stock-reason-modal .modal-body,
+  .stock-reason-modal .modal-footer {
+    padding: 12px;
+  }
+  
+  .stock-reason-modal .modal-header h3 {
+    font-size: 1em;
+  }
+  
+  .stock-change-info {
+    padding: 10px;
+  }
+  
+  .stock-reason-form .form-group {
+    margin-bottom: 12px;
   }
 } 

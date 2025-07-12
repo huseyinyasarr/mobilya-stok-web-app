@@ -4,50 +4,50 @@ import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/databas
 import { db } from '../firebase';
 import './ActivityLogs.css';
 
-// String benzerlik hesaplama (Jaro-Winkler benzeri)
-const calculateSimilarity = (str1, str2) => {
-  if (typeof str1 !== 'string' || typeof str2 !== 'string') return 0;
-  if (str1 === str2) return 1;
-  if (str1.length === 0 || str2.length === 0) return 0;
-  
-  const matches = [];
-  const s1_matches = new Array(str1.length).fill(false);
-  const s2_matches = new Array(str2.length).fill(false);
-  
-  const match_distance = Math.floor(Math.max(str1.length, str2.length) / 2) - 1;
-  let matches_count = 0;
-  
-  // Eşleşmeleri bul
-  for (let i = 0; i < str1.length; i++) {
-    const start = Math.max(0, i - match_distance);
-    const end = Math.min(i + match_distance + 1, str2.length);
+  // String benzerlik hesaplama (Jaro-Winkler benzeri)
+  const calculateSimilarity = (str1, str2) => {
+    if (typeof str1 !== 'string' || typeof str2 !== 'string') return 0;
+    if (str1 === str2) return 1;
+    if (str1.length === 0 || str2.length === 0) return 0;
     
-    for (let j = start; j < end; j++) {
-      if (s2_matches[j] || str1[i] !== str2[j]) continue;
-      s1_matches[i] = s2_matches[j] = true;
-      matches.push(str1[i]);
-      matches_count++;
-      break;
+    const matches = [];
+    const s1_matches = new Array(str1.length).fill(false);
+    const s2_matches = new Array(str2.length).fill(false);
+    
+    const match_distance = Math.floor(Math.max(str1.length, str2.length) / 2) - 1;
+    let matches_count = 0;
+    
+    // Eşleşmeleri bul
+    for (let i = 0; i < str1.length; i++) {
+      const start = Math.max(0, i - match_distance);
+      const end = Math.min(i + match_distance + 1, str2.length);
+      
+      for (let j = start; j < end; j++) {
+        if (s2_matches[j] || str1[i] !== str2[j]) continue;
+        s1_matches[i] = s2_matches[j] = true;
+        matches.push(str1[i]);
+        matches_count++;
+        break;
+      }
     }
-  }
-  
-  if (matches_count === 0) return 0;
-  
-  // Transpozisyonları hesapla
-  let transpositions = 0;
-  let k = 0;
-  for (let i = 0; i < str1.length; i++) {
-    if (!s1_matches[i]) continue;
-    while (!s2_matches[k]) k++;
-    if (str1[i] !== str2[k]) transpositions++;
-    k++;
-  }
-  
-  const jaro = (matches_count / str1.length + matches_count / str2.length + 
-                (matches_count - transpositions / 2) / matches_count) / 3;
-  
-  return jaro;
-};
+    
+    if (matches_count === 0) return 0;
+    
+    // Transpozisyonları hesapla
+    let transpositions = 0;
+    let k = 0;
+    for (let i = 0; i < str1.length; i++) {
+      if (!s1_matches[i]) continue;
+      while (!s2_matches[k]) k++;
+      if (str1[i] !== str2[k]) transpositions++;
+      k++;
+    }
+    
+    const jaro = (matches_count / str1.length + matches_count / str2.length + 
+                  (matches_count - transpositions / 2) / matches_count) / 3;
+    
+    return jaro;
+  };
 
 function ActivityLogs({ onClose }) {
   const [logs, setLogs] = useState([]);

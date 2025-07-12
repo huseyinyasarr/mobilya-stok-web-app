@@ -19,9 +19,22 @@ function AddProductForm({ onClose, onProductAdded }) {
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Stok giriş sebepleri
+  const [stockReason, setStockReason] = useState('purchase'); // 'purchase' | 'return'
+  const [returnReason, setReturnReason] = useState(''); // 'wrong_product' | 'damaged' | 'other'
+  const [returnDescription, setReturnDescription] = useState('');
 
   // Kategoriler listesi
-  const categories = ['yatak', 'kanepe', 'koltuk', 'masa', 'sandalye', 'dolap', 'diğer'];
+  const categories = [
+    { id: 'yatak', name: 'Yatak' },
+    { id: 'kanepe', name: 'Kanepe' },
+    { id: 'koltuk', name: 'Koltuk' },
+    { id: 'masa', name: 'Masa/Sehpa' },
+    { id: 'sandalye', name: 'Sandalye' },
+    { id: 'dolap', name: 'Dolap' },
+    { id: 'diger', name: 'Diğer' }
+  ];
 
   // Form input değişikliklerini yakala
   const handleInputChange = (e) => {
@@ -86,6 +99,22 @@ function AddProductForm({ onClose, onProductAdded }) {
       return false;
     }
     
+    // Stok giriş sebep doğrulama
+    if (!stockReason) {
+      setError('Stok giriş sebebi seçilmelidir');
+      return false;
+    }
+    
+    if (stockReason === 'return' && !returnReason) {
+      setError('İade sebebi seçilmelidir');
+      return false;
+    }
+    
+    if (stockReason === 'return' && returnReason === 'other' && !returnDescription.trim()) {
+      setError('İade açıklaması girilmelidir');
+      return false;
+    }
+    
     return true;
   };
 
@@ -111,6 +140,36 @@ function AddProductForm({ onClose, onProductAdded }) {
         quantity: parseInt(variant.quantity)
       }));
       
+      // Stok giriş bilgilerini hazırla
+      const totalQuantity = getTotalQuantity();
+      const stockEntry = {
+        date: new Date().toISOString(),
+        type: 'increase',
+        reason: stockReason,
+        quantity: totalQuantity,
+        remainingStock: totalQuantity, // İlk giriş olduğu için kalan stok = toplam stok
+        variantChanges: cleanVariants.map(variant => ({
+          colorCode: variant.colorCode || '',
+          colorName: variant.colorName || '',
+          quantityChange: variant.quantity,
+          oldQuantity: 0,
+          newQuantity: variant.quantity
+        })),
+        user: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı'
+        }
+      };
+      
+      // İade sebebi varsa ekle
+      if (stockReason === 'return') {
+        stockEntry.returnReason = returnReason;
+        if (returnReason === 'other' && returnDescription.trim()) {
+          stockEntry.returnDescription = returnDescription.trim();
+        }
+      }
+
       const newProductData = {
         name: formData.name.trim(),
         brand: formData.brand.trim(),
@@ -124,7 +183,8 @@ function AddProductForm({ onClose, onProductAdded }) {
           uid: currentUser.uid,
           email: currentUser.email,
           displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı'
-        }
+        },
+        stockHistory: [stockEntry] // İlk stok giriş kaydı
       };
 
       const newProductRef = await push(productsRef, newProductData);
@@ -139,6 +199,11 @@ function AddProductForm({ onClose, onProductAdded }) {
           brand: newProductData.brand,
           category: newProductData.category,
           totalQuantity: newProductData.totalQuantity
+        },
+        {
+          stockReason: stockReason,
+          returnReason: stockReason === 'return' ? returnReason : null,
+          returnDescription: stockReason === 'return' && returnReason === 'other' ? returnDescription : null
         }
       );
 
@@ -219,8 +284,8 @@ function AddProductForm({ onClose, onProductAdded }) {
                 required
               >
                 {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  <option key={category.id} value={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -239,6 +304,58 @@ function AddProductForm({ onClose, onProductAdded }) {
               disabled={loading}
             />
           </div>
+
+          {/* Stok Giriş Sebebi */}
+          <div className="edit-form-group">
+            <label htmlFor="stockReason">Stok Giriş Sebebi *</label>
+            <select
+              id="stockReason"
+              value={stockReason}
+              onChange={(e) => setStockReason(e.target.value)}
+              disabled={loading}
+              required
+            >
+              <option value="purchase">Satın Alım</option>
+              <option value="return">Ürün İade</option>
+            </select>
+          </div>
+
+          {/* İade Sebebi (sadece iade seçildiğinde) */}
+          {stockReason === 'return' && (
+            <>
+              <div className="edit-form-group">
+                <label htmlFor="returnReason">İade Sebebi *</label>
+                <select
+                  id="returnReason"
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  disabled={loading}
+                  required
+                >
+                  <option value="">Seçiniz...</option>
+                  <option value="wrong_product">Yanlış Ürün</option>
+                  <option value="damaged">Bozuk Ürün</option>
+                  <option value="other">Diğer</option>
+                </select>
+              </div>
+
+              {/* İade Açıklaması (sadece diğer seçildiğinde) */}
+              {returnReason === 'other' && (
+                <div className="edit-form-group">
+                  <label htmlFor="returnDescription">İade Açıklaması *</label>
+                  <textarea
+                    id="returnDescription"
+                    value={returnDescription}
+                    onChange={(e) => setReturnDescription(e.target.value)}
+                    placeholder="İade sebebini açıklayın..."
+                    rows="3"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+              )}
+            </>
+          )}
 
           {/* Renk Çeşitleri */}
           <div className="edit-variants-section">

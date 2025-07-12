@@ -58,12 +58,57 @@ const getLogDescription = (action, userName, productInfo, details) => {
   switch (action) {
     case LOG_ACTIONS.PRODUCT_CREATED:
       const totalQty = productInfo.totalQuantity || productInfo.quantity || 0;
-      return `${userName}, ${productName} ürününü ekledi (${totalQty} adet)`;
+      let createText = `${userName}, ${productName} ürününü ekledi (${totalQty} adet)`;
+      
+      // Stok giriş sebebini ekle
+      if (details.stockReason) {
+        if (details.stockReason === 'purchase') {
+          createText += ' - Satın Alım';
+        } else if (details.stockReason === 'return') {
+          createText += ' - Ürün İade';
+          if (details.returnReason === 'wrong_product') createText += ' (Yanlış Ürün)';
+          else if (details.returnReason === 'damaged') createText += ' (Bozuk Ürün)';
+          else if (details.returnReason === 'other') createText += ' (Diğer)';
+          if (details.returnDescription) createText += `: ${details.returnDescription}`;
+        }
+      }
+      
+      return createText;
       
     case LOG_ACTIONS.PRODUCT_UPDATED:
       let updateDetails = [];
       if (details.quantityChange) {
-        updateDetails.push(`Toplam stok: ${details.quantityChange.from} → ${details.quantityChange.to}`);
+        let stockText = `Toplam stok: ${details.quantityChange.from} → ${details.quantityChange.to}`;
+        
+        // Stok değişiklik sebebini ekle
+        if (details.stockChangeType && details.stockChangeReason) {
+          if (details.stockChangeType === 'increase') {
+            if (details.stockChangeReason === 'purchase') {
+              stockText += ' (Satın Alım)';
+            } else if (details.stockChangeReason === 'return') {
+              stockText += ' (Ürün İade)';
+            }
+          } else if (details.stockChangeType === 'decrease') {
+            if (details.stockChangeReason === 'sold') {
+              stockText += ' (Ürün Satıldı)';
+            } else if (details.stockChangeReason === 'return_to_supplier') {
+              stockText += ' (Firmaya İade)';
+            }
+          }
+          
+          // İade detayları
+          if (details.stockChangeDescription) {
+            const parts = details.stockChangeDescription.split(':');
+            const reason = parts[0];
+            const desc = parts[1];
+            
+            if (reason === 'wrong_product') stockText += ' - Yanlış Ürün';
+            else if (reason === 'damaged') stockText += ' - Bozuk Ürün';
+            else if (reason === 'other' && desc) stockText += ` - ${desc}`;
+          }
+        }
+        
+        updateDetails.push(stockText);
       }
       if (details.nameChanged) {
         updateDetails.push(`İsim değişti: "${details.nameChanged.from}" → "${details.nameChanged.to}"`);

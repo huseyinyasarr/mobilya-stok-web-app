@@ -405,6 +405,50 @@
   background: #fee2e2;
 }
 
+/* Stok Tükenen Ürünlerin Görünümü */
+.product-card.out-of-stock-item {
+  opacity: 0.6;
+  position: relative;
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  transform: none !important;
+}
+
+.product-card.out-of-stock-item:hover {
+  transform: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.product-card.out-of-stock-item::before {
+  content: "STOKTABİTTİ";
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #dc3545;
+  color: white;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 4px;
+  z-index: 10;
+  letter-spacing: 0.5px;
+}
+
+.product-list-item.out-of-stock-item {
+  opacity: 0.6;
+  background: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.product-list-item.out-of-stock-item .list-item-name {
+  color: #6c757d;
+}
+
+.product-list-item.out-of-stock-item .list-item-brand,
+.product-list-item.out-of-stock-item .list-item-category {
+  opacity: 0.8;
+}
+
 .product-description {
   background: #f8fafc;
   padding: 12px;
