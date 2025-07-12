@@ -66,10 +66,10 @@ const getLogDescription = (action, userName, productInfo, details) => {
         updateDetails.push(`Toplam stok: ${details.quantityChange.from} → ${details.quantityChange.to}`);
       }
       if (details.nameChanged) {
-        updateDetails.push(`İsim değişti`);
+        updateDetails.push(`İsim değişti: "${details.nameChanged.from}" → "${details.nameChanged.to}"`);
       }
       if (details.categoryChanged) {
-        updateDetails.push(`Kategori değişti`);
+        updateDetails.push(`Kategori değişti: "${details.categoryChanged.from}" → "${details.categoryChanged.to}"`);
       }
       if (details.variantChanges) {
         const variantTexts = [];
@@ -102,7 +102,7 @@ const getLogDescription = (action, userName, productInfo, details) => {
         }
         
         if (variantTexts.length > 0) {
-          updateDetails.push(`Varyantlar: ${variantTexts.join(', ')}`);
+          updateDetails.push(`Renkler: ${variantTexts.join(', ')}`);
         }
       }
       

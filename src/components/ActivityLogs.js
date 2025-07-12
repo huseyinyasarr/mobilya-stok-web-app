@@ -477,21 +477,21 @@ function ActivityLogs({ onClose }) {
                         
                         {log.details.variantChanges && (
                           <div className="variant-changes">
-                            {/* Eklenen varyantlar */}
+                            {/* Eklenen renkler */}
                             {log.details.variantChanges.added && log.details.variantChanges.added.map((variant, index) => (
                               <span key={`added-${index}`} className="detail-item variant-added">
                                 ➕ {variant.colorCode} {variant.colorName} ({variant.quantity} adet)
                               </span>
                             ))}
                             
-                            {/* Değişen varyantlar */}
+                            {/* Değişen renkler */}
                             {log.details.variantChanges.modified && log.details.variantChanges.modified.map((change, index) => (
                               <span key={`modified-${index}`} className="detail-item variant-modified">
                                 ✏️ {change.colorCode} {change.colorName}: {change.oldQuantity} → {change.newQuantity}
                               </span>
                             ))}
                             
-                            {/* Silinen varyantlar */}
+                            {/* Silinen renkler */}
                             {log.details.variantChanges.removed && log.details.variantChanges.removed.map((variant, index) => (
                               <span key={`removed-${index}`} className="detail-item variant-removed">
                                 🗑️ {variant.colorCode} {variant.colorName} ({variant.quantity} adet)
@@ -502,13 +502,13 @@ function ActivityLogs({ onClose }) {
                         
                         {log.details.nameChanged && (
                           <span className="detail-item name-changed">
-                            İsim değiştirildi
+                            İsim değiştirildi: "{log.details.nameChanged.from}" → "{log.details.nameChanged.to}"
                           </span>
                         )}
                         
                         {log.details.categoryChanged && (
                           <span className="detail-item category-changed">
-                            Kategori değiştirildi
+                            Kategori değiştirildi: "{log.details.categoryChanged.from}" → "{log.details.categoryChanged.to}"
                           </span>
                         )}
                       </div>

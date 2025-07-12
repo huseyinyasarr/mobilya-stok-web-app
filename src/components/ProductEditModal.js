@@ -155,8 +155,18 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
       if (oldTotalQuantity !== newTotalQuantity) {
         logDetails.quantityChange = { from: oldTotalQuantity, to: newTotalQuantity };
       }
-      if (nameChanged) logDetails.nameChanged = true;
-      if (categoryChanged) logDetails.categoryChanged = true;
+      if (nameChanged) {
+        logDetails.nameChanged = {
+          from: product.name,
+          to: formData.name.trim()
+        };
+      }
+      if (categoryChanged) {
+        logDetails.categoryChanged = {
+          from: product.category,
+          to: formData.category
+        };
+      }
       if (variantChanges.hasChanges) {
         logDetails.variantChanges = variantChanges.changes;
       }
