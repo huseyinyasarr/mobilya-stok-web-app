@@ -1,8 +1,53 @@
 // Activity Logs Component - İşlem geçmişini görüntüler
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { db } from '../firebase';
 import './ActivityLogs.css';
+
+// String benzerlik hesaplama (Jaro-Winkler benzeri)
+const calculateSimilarity = (str1, str2) => {
+  if (typeof str1 !== 'string' || typeof str2 !== 'string') return 0;
+  if (str1 === str2) return 1;
+  if (str1.length === 0 || str2.length === 0) return 0;
+  
+  const matches = [];
+  const s1_matches = new Array(str1.length).fill(false);
+  const s2_matches = new Array(str2.length).fill(false);
+  
+  const match_distance = Math.floor(Math.max(str1.length, str2.length) / 2) - 1;
+  let matches_count = 0;
+  
+  // Eşleşmeleri bul
+  for (let i = 0; i < str1.length; i++) {
+    const start = Math.max(0, i - match_distance);
+    const end = Math.min(i + match_distance + 1, str2.length);
+    
+    for (let j = start; j < end; j++) {
+      if (s2_matches[j] || str1[i] !== str2[j]) continue;
+      s1_matches[i] = s2_matches[j] = true;
+      matches.push(str1[i]);
+      matches_count++;
+      break;
+    }
+  }
+  
+  if (matches_count === 0) return 0;
+  
+  // Transpozisyonları hesapla
+  let transpositions = 0;
+  let k = 0;
+  for (let i = 0; i < str1.length; i++) {
+    if (!s1_matches[i]) continue;
+    while (!s2_matches[k]) k++;
+    if (str1[i] !== str2[k]) transpositions++;
+    k++;
+  }
+  
+  const jaro = (matches_count / str1.length + matches_count / str2.length + 
+                (matches_count - transpositions / 2) / matches_count) / 3;
+  
+  return jaro;
+};
 
 function ActivityLogs({ onClose }) {
   const [logs, setLogs] = useState([]);
@@ -11,7 +56,6 @@ function ActivityLogs({ onClose }) {
   const [actionFilter, setActionFilter] = useState('all'); // all, created, updated, deleted
   const [searchQuery, setSearchQuery] = useState(''); // Arama sorgusu
   const [isSearching, setIsSearching] = useState(false); // Sadece search bar loading için
-  const [searchResults, setSearchResults] = useState([]); // Arama sonuçları
   const [filteredLogs, setFilteredLogs] = useState([]); // Gerçek zamanlı filtrelenmiş sonuçlar
 
   // Log kayıtlarını getir
@@ -52,53 +96,10 @@ function ActivityLogs({ onClose }) {
     }
   }, []);
 
-  // String benzerlik hesaplama (Jaro-Winkler benzeri)
-  const calculateSimilarity = (str1, str2) => {
-    if (typeof str1 !== 'string' || typeof str2 !== 'string') return 0;
-    if (str1 === str2) return 1;
-    if (str1.length === 0 || str2.length === 0) return 0;
-    
-    const matches = [];
-    const s1_matches = new Array(str1.length).fill(false);
-    const s2_matches = new Array(str2.length).fill(false);
-    
-    const match_distance = Math.floor(Math.max(str1.length, str2.length) / 2) - 1;
-    let matches_count = 0;
-    
-    // Eşleşmeleri bul
-    for (let i = 0; i < str1.length; i++) {
-      const start = Math.max(0, i - match_distance);
-      const end = Math.min(i + match_distance + 1, str2.length);
-      
-      for (let j = start; j < end; j++) {
-        if (s2_matches[j] || str1[i] !== str2[j]) continue;
-        s1_matches[i] = s2_matches[j] = true;
-        matches.push(str1[i]);
-        matches_count++;
-        break;
-      }
-    }
-    
-    if (matches_count === 0) return 0;
-    
-    // Transpozisyonları hesapla
-    let transpositions = 0;
-    let k = 0;
-    for (let i = 0; i < str1.length; i++) {
-      if (!s1_matches[i]) continue;
-      while (!s2_matches[k]) k++;
-      if (str1[i] !== str2[k]) transpositions++;
-      k++;
-    }
-    
-    const jaro = (matches_count / str1.length + matches_count / str2.length + 
-                  (matches_count - transpositions / 2) / matches_count) / 3;
-    
-    return jaro;
-  };
+
 
   // Akıllı arama fonksiyonu
-  const getSearchResults = (logs, query) => {
+  const getSearchResults = useCallback((logs, query) => {
     if (!logs || !Array.isArray(logs)) return [];
     if (!query || query.trim() === '') return logs;
     
@@ -177,9 +178,10 @@ function ActivityLogs({ onClose }) {
       };
     });
     
-    // Score'a göre sırala
-    return scoredLogs.sort((a, b) => b.searchScore - a.searchScore);
-  };
+    // Sadece eşleşen sonuçları filtrele ve score'a göre sırala
+    const filteredResults = scoredLogs.filter(log => log.searchScore > 0);
+    return filteredResults.sort((a, b) => b.searchScore - a.searchScore);
+      }, []);
 
   // Arama işlevi değiştiğinde - gerçek zamanlı filtreleme
   const handleSearchChange = (e) => {
@@ -195,10 +197,8 @@ function ActivityLogs({ onClose }) {
       
       if (query.trim() !== '') {
         const results = getSearchResults(baseResults, query);
-        setSearchResults(results);
         setFilteredLogs(results);
       } else {
-        setSearchResults([]);
         setFilteredLogs(baseResults);
       }
       
@@ -209,13 +209,12 @@ function ActivityLogs({ onClose }) {
   // Arama temizleme
   const clearSearch = () => {
     setIsSearching(false);
-    setSearchResults([]);
     setSearchQuery('');
     setFilteredLogs(getBaseFilteredLogs(logs));
   };
 
   // Temel filtreleme (zaman ve işlem türü)
-  const getBaseFilteredLogs = (logs) => {
+  const getBaseFilteredLogs = useCallback((logs) => {
     let filtered = [...logs];
     
     // Zaman filtresi
@@ -257,7 +256,7 @@ function ActivityLogs({ onClose }) {
     }
     
     return filtered;
-  };
+  }, [filter, actionFilter]);
 
   // Filtreler değiştiğinde
   useEffect(() => {
@@ -265,12 +264,11 @@ function ActivityLogs({ onClose }) {
     
     if (searchQuery.trim()) {
       const results = getSearchResults(baseFiltered, searchQuery);
-      setSearchResults(results);
       setFilteredLogs(results);
     } else {
       setFilteredLogs(baseFiltered);
     }
-  }, [filter, actionFilter, logs]);
+  }, [filter, actionFilter, logs, searchQuery, getBaseFilteredLogs, getSearchResults]);
 
   // Tarih formatı
   const formatDate = (timestamp) => {

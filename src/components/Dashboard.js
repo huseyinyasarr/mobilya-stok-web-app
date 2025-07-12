@@ -18,7 +18,6 @@ function Dashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCategoryDetails, setShowCategoryDetails] = useState(false);
   const [showBrandDetails, setShowBrandDetails] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'grid' veya 'list'
   const [isScrolled, setIsScrolled] = useState(false);
   const [showCategorySelection, setShowCategorySelection] = useState(true); // Kategori seçim ekranını kontrol eder
   const [showActivityLogs, setShowActivityLogs] = useState(false);
@@ -49,7 +48,7 @@ function Dashboard() {
   }, []);
 
   // Mobilde her zaman liste görünümü kullan
-  const currentViewMode = isMobile ? 'list' : viewMode;
+  const currentViewMode = 'list';
 
   // Kategoriler listesi
   const categories = ['all', 'yatak', 'kanepe', 'koltuk', 'masa', 'sandalye', 'dolap', 'diğer'];
