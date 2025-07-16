@@ -1,5 +1,5 @@
 // Logging utility functions
-import { ref, push } from 'firebase/database';
+import { ref, push, get, query, orderByChild, limitToFirst, remove } from 'firebase/database';
 import { db } from '../firebase';
 
 // Log işlemi tiplerini tanımla
@@ -44,7 +44,34 @@ export const createLog = async (action, user, productInfo, details = {}) => {
 
     await push(logsRef, logEntry);
     console.log('Log kaydı oluşturuldu:', logEntry);
-    
+
+    // --- LOG LİMİTİ: 300 --- //
+    // 301. log varsa en eskisini sil
+    const allLogsSnap = await get(logsRef);
+    if (allLogsSnap.exists()) {
+      const allLogs = allLogsSnap.val();
+      const logKeys = Object.keys(allLogs);
+      if (logKeys.length > 300) {
+        // En eski logu bul (timestamp'e göre)
+        let oldestKey = null;
+        let oldestTimestamp = null;
+        for (const key of logKeys) {
+          const ts = allLogs[key]?.timestamp;
+          if (ts) {
+            if (!oldestTimestamp || new Date(ts) < new Date(oldestTimestamp)) {
+              oldestTimestamp = ts;
+              oldestKey = key;
+            }
+          }
+        }
+        if (oldestKey) {
+          await remove(ref(db, `logs/${oldestKey}`));
+          console.log('En eski log silindi:', oldestKey);
+        }
+      }
+    }
+    // --- LOG LİMİTİ SONU --- //
+
   } catch (error) {
     console.error('Log kaydı oluşturulurken hata:', error);
     // Log hatası ana işlemi engellemez
