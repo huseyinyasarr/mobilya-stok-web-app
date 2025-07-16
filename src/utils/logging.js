@@ -1,5 +1,5 @@
 // Logging utility functions
-import { ref, push, get, query, orderByChild, limitToFirst, remove } from 'firebase/database';
+import { ref, push, get, remove } from 'firebase/database';
 import { db } from '../firebase';
 
 // Log işlemi tiplerini tanımla
