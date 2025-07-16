@@ -148,7 +148,22 @@ function Dashboard() {
                 ←
               </button>
             )}
-            <h1>🪑 Şeref Mobilya</h1>
+            <img 
+              src={process.env.PUBLIC_URL + '/logo.png'} 
+              alt="Şeref Mobilya Logo" 
+              className="navbar-logo"
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                marginRight: '10px',
+                background: '#fff',
+                border: '2px solid #e0e0e0',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+              }}
+            />
+            <h1>Şeref Mobilya</h1>
           </div>
           
           {/* Search Bar - sadece kategori seçili değilse göster */}
