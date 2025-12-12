@@ -2,6 +2,16 @@
 
 Firebase Realtime Database kullanarak geliştirilmiş mobilya stok takip uygulaması.
 
+## Gereksinimler
+
+- **Node.js**: >= 22.0.0 (LTS)
+- **npm**: >= 10.0.0
+
+NVM kullanıyorsanız:
+```bash
+nvm use
+```
+
 ## Kurulum
 
 ### 1. Bağımlılıkları Yükleyin
