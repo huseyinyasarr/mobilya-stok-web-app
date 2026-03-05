@@ -1,0 +1,59 @@
+/* ===== BrandInput — Marka Otomatik Tamamlama ===== */
+
+.brand-input-wrapper {
+  position: relative;
+}
+
+/*
+  Öneri listesi React portal ile document.body içine render edilir.
+  Bu sayede overflow:hidden/auto olan parent'lar tarafından kesilmez.
+  Gerçek koordinatlar JS ile hesaplanıp inline style olarak atanır.
+  Aşağıdaki stiller görsel tasarımı tanımlar.
+*/
+.brand-suggestions-list {
+  position: fixed;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 9999;
+  box-sizing: border-box;
+}
+
+.brand-suggestions-list li {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.12s ease;
+}
+
+.brand-suggestions-list li:last-child {
+  border-bottom: none;
+}
+
+.brand-suggestions-list li:hover {
+  background: #f0f4ff;
+  color: #3730a3;
+}
+
+.brand-suggestions-list li.brand-exact {
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+.brand-check-icon {
+  font-size: 0.8rem;
+  color: #10b981;
+  flex-shrink: 0;
+}

@@ -5,8 +5,10 @@ import ProductList from './ProductList';
 import AddProductForm from './AddProductForm';
 import CategorySelection from './CategorySelection';
 import ActivityLogs from './ActivityLogs';
+import BulkProductEntry from './BulkProductEntry';
 import { ref, onValue, orderByChild, query } from 'firebase/database';
 import { db } from '../firebase';
+import { setProductsCache } from '../utils/offlineQueue';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -21,6 +23,8 @@ function Dashboard() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showCategorySelection, setShowCategorySelection] = useState(true); // Kategori seçim ekranını kontrol eder
   const [showActivityLogs, setShowActivityLogs] = useState(false);
+  const [showBulkEntry, setShowBulkEntry] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); // Arama sorgusu
   const [sortBy, setSortBy] = useState('alphabetical'); // Sıralama seçeneği
 
@@ -28,13 +32,29 @@ function Dashboard() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Scroll'a dönünce menüyü kapat
+  useEffect(() => {
+    if (!isScrolled) setShowMobileMenu(false);
+  }, [isScrolled]);
+
+  // Menü dışına tıklayınca kapat
+  useEffect(() => {
+    if (!showMobileMenu) return;
+    const handleOutside = (e) => {
+      if (!e.target.closest('.mobile-menu-wrapper')) setShowMobileMenu(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [showMobileMenu]);
 
   // Scroll durumunu takip et
   useEffect(() => {
@@ -67,8 +87,10 @@ function Dashboard() {
             ...data[key]
           }));
           setProducts(productsData);
+          setProductsCache(data); // Offline kullanım için önbelleğe al
         } else {
           setProducts([]);
+          setProductsCache({});
         }
         setLoading(false);
       }, (error) => {
@@ -195,18 +217,66 @@ function Dashboard() {
             {(!isScrolled || !isMobile) && (
               <span>{currentUser.displayName}</span>
             )}
-            {!showCategorySelection && (
-              <button 
-                onClick={() => setShowActivityLogs(true)} 
-                className="logs-btn"
-                title="İşlem Geçmişi"
-              >
-                {isScrolled && isMobile ? '📋' : '📋 Geçmiş'}
-              </button>
+
+            {isScrolled && isMobile ? (
+              /* Scroll'da mobil: hamburger menü */
+              <div className="mobile-menu-wrapper">
+                <button
+                  className={`mobile-menu-btn${showMobileMenu ? ' open' : ''}`}
+                  onClick={() => setShowMobileMenu((v) => !v)}
+                  aria-label="Menü"
+                >
+                  {showMobileMenu ? '✕' : '☰'}
+                </button>
+                {showMobileMenu && (
+                  <div className="mobile-menu-dropdown">
+                    <button
+                      className="mobile-menu-item"
+                      onClick={() => { setShowBulkEntry(true); setShowMobileMenu(false); }}
+                    >
+                      <span>📦</span> Toplu Giriş
+                    </button>
+                    {!showCategorySelection && (
+                      <button
+                        className="mobile-menu-item"
+                        onClick={() => { setShowActivityLogs(true); setShowMobileMenu(false); }}
+                      >
+                        <span>📋</span> Geçmiş
+                      </button>
+                    )}
+                    <button
+                      className="mobile-menu-item logout"
+                      onClick={handleLogout}
+                    >
+                      <span>⏻</span> Çıkış Yap
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Normal görünüm */
+              <>
+                <button
+                  onClick={() => setShowBulkEntry(true)}
+                  className="bulk-entry-btn"
+                  title="Toplu Ürün Girişi"
+                >
+                  📦 Toplu Giriş
+                </button>
+                {!showCategorySelection && (
+                  <button
+                    onClick={() => setShowActivityLogs(true)}
+                    className="logs-btn"
+                    title="İşlem Geçmişi"
+                  >
+                    📋 Geçmiş
+                  </button>
+                )}
+                <button onClick={handleLogout} className="logout-btn">
+                  Çıkış Yap
+                </button>
+              </>
             )}
-            <button onClick={handleLogout} className="logout-btn">
-              {isScrolled && isMobile ? '⏻' : 'Çıkış Yap'}
-            </button>
           </div>
         </div>
       </header>
@@ -417,9 +487,10 @@ function Dashboard() {
 
             {/* Ürün Ekleme Formu Modal */}
             {showAddForm && (
-              <AddProductForm 
+              <AddProductForm
                 onClose={() => setShowAddForm(false)}
                 onProductAdded={fetchProducts}
+                brands={availableBrands}
               />
             )}
             
@@ -430,6 +501,11 @@ function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Toplu Ürün Girişi Modal — kategori seçim ekranında da açılabilmesi için dışarıda */}
+      {showBulkEntry && (
+        <BulkProductEntry onClose={() => setShowBulkEntry(false)} />
+      )}
     </div>
   );
 }
