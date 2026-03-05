@@ -57,3 +57,30 @@
   color: #10b981;
   flex-shrink: 0;
 }
+
+/* Kategori ikonları */
+.cat-option-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* "＋ Yeni … ekle" seçeneği (hem marka hem kategori) */
+.brand-suggestions-list li.brand-new-option {
+  color: #667eea;
+  font-size: 0.875rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8f9ff;
+  gap: 6px;
+}
+
+.brand-suggestions-list li.brand-new-option:hover {
+  background: #eef0ff;
+  color: #3730a3;
+}
+
+.brand-new-icon {
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: #667eea;
+}

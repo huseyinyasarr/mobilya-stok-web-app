@@ -185,8 +185,17 @@
    edit-quantity-container'ın overflow:hidden'ı flex layout'ta + butonunu
    keser. bulk-form-panel içinde overflow:visible + bireysel border-radius
    ile düzeltiyoruz. edit-variant-inputs için de min-width:0 gereklidir. */
+/* Quantity modunda 3 sütunun gap'i küçültülür; overflow taşmasını önler */
 .bulk-form-panel .edit-variant-inputs {
   min-width: 0;
+  gap: 8px;
+}
+
+/* 480px altında tek sütun — inputlar üst üste, daha okunaklı */
+@media (max-width: 480px) {
+  .bulk-form-panel .edit-variant-row:not(.edit-variant-row--delta) .edit-variant-inputs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .bulk-form-panel .edit-quantity-container {
@@ -437,10 +446,23 @@
 
 /* ---- Kuyruk Bölümü ---- */
 .bulk-queue-section {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 24px;
   background: #f8fafc;
+}
+
+/* Kapalı hâl: yalnızca başlık kadar yer kaplar */
+.bulk-queue-collapsed {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+/* Kuyruk kapalıyken form alanı kalan boşluğu devralır */
+.bulk-body-queue-closed .bulk-form-area {
+  flex: 1 1 auto;
+  max-height: none;
 }
 
 .bulk-queue-header {
@@ -448,6 +470,62 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+/* Tıklanabilir başlık */
+.bulk-queue-header--toggle {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 8px;
+  padding: 6px 4px;
+  margin: -6px -4px 12px -4px;
+  transition: background 0.15s ease;
+}
+
+/* Kapalıyken alt margin gereksiz */
+.bulk-queue-collapsed .bulk-queue-header--toggle {
+  margin-bottom: 0;
+}
+
+.bulk-queue-header--toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.bulk-queue-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Chevron oku: kapalıyken › (sağa), açıkken ↓ (aşağıya) */
+.bulk-queue-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: #9ca3af;
+  transform: rotate(0deg);
+  transition: transform 0.25s ease, color 0.15s ease;
+}
+
+.bulk-queue-chevron--open {
+  transform: rotate(90deg);
+  color: #667eea;
+}
+
+/* Kuyruk içerik kapsayıcısı — çekmece animasyonu */
+.bulk-queue-body {
+  overflow: hidden;
+  max-height: 2000px;
+  transition: max-height 0.35s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+
+.bulk-queue-collapsed .bulk-queue-body {
+  max-height: 0;
+  opacity: 0;
 }
 
 .bulk-queue-header h3 {

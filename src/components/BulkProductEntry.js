@@ -598,6 +598,9 @@ function BulkProductEntry({ onClose }) {
     (e) => e.status === 'pending' || e.status === 'error'
   ).length;
 
+  // Mobilde kuyruk varsayılan kapalı, masaüstünde açık
+  const [queueOpen, setQueueOpen] = useState(() => window.innerWidth > 768);
+
   return (
     <div
       className="bulk-modal-backdrop"
@@ -635,7 +638,7 @@ function BulkProductEntry({ onClose }) {
         </div>
 
         {/* İçerik */}
-        <div className="bulk-modal-body">
+        <div className={`bulk-modal-body${queueOpen ? '' : ' bulk-body-queue-closed'}`}>
           {/* Form alanı */}
           <div className="bulk-form-area">
             {showForm ? (
@@ -659,34 +662,44 @@ function BulkProductEntry({ onClose }) {
           </div>
 
           {/* Kuyruk listesi */}
-          <div className="bulk-queue-section">
-            <div className="bulk-queue-header">
+          <div className={`bulk-queue-section${queueOpen ? '' : ' bulk-queue-collapsed'}`}>
+            <div
+              className="bulk-queue-header bulk-queue-header--toggle"
+              onClick={() => setQueueOpen((o) => !o)}
+            >
               <h3>
                 Kuyruk
                 {queue.length > 0 && (
                   <span className="bulk-queue-count">{queue.length}</span>
                 )}
               </h3>
-              {queue.length > 0 && !syncing && (
-                <button
-                  className="bulk-clear-all-btn"
-                  onClick={() => { clearQueue(); refreshQueue(); }}
-                  title="Tüm kuyruğu temizle"
-                >
-                  Tümünü Temizle
-                </button>
-              )}
+              <div className="bulk-queue-header-actions">
+                {queue.length > 0 && !syncing && queueOpen && (
+                  <button
+                    className="bulk-clear-all-btn"
+                    onClick={(e) => { e.stopPropagation(); clearQueue(); refreshQueue(); }}
+                    title="Tüm kuyruğu temizle"
+                  >
+                    Tümünü Temizle
+                  </button>
+                )}
+                <span className={`bulk-queue-chevron${queueOpen ? ' bulk-queue-chevron--open' : ''}`}>
+                  ›
+                </span>
+              </div>
             </div>
 
-            {queue.length === 0 ? (
-              <div className="bulk-queue-empty">Kuyrukta henüz giriş yok.</div>
-            ) : (
-              <div className="bulk-queue-list">
-                {queue.map((entry) => (
-                  <QueueCard key={entry.id} entry={entry} onRemove={handleRemove} />
-                ))}
-              </div>
-            )}
+            <div className="bulk-queue-body">
+              {queue.length === 0 ? (
+                <div className="bulk-queue-empty">Kuyrukta henüz giriş yok.</div>
+              ) : (
+                <div className="bulk-queue-list">
+                  {queue.map((entry) => (
+                    <QueueCard key={entry.id} entry={entry} onRemove={handleRemove} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

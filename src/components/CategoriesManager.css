@@ -1,0 +1,314 @@
+/* ===== Kategori Yönetim Modalı ===== */
+
+.catmgr-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: catmgrFadeIn 0.18s ease;
+}
+
+@keyframes catmgrFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.catmgr-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: catmgrSlide 0.22s ease;
+  overflow: hidden;
+}
+
+@keyframes catmgrSlide {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ---- Header ---- */
+.catmgr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.catmgr-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.catmgr-close-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.catmgr-close-btn:hover { background: #e5e7eb; color: #374151; }
+
+/* ---- Body ---- */
+.catmgr-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+
+.catmgr-hint {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* ---- Kategori satırı ---- */
+.catmgr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.catmgr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  transition: box-shadow 0.15s;
+}
+
+.catmgr-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+.catmgr-row--editing,
+.catmgr-row--confirm {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  background: #f5f7ff;
+  border-color: #c7d2fe;
+}
+
+.catmgr-row-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.catmgr-row-icon  { font-size: 1.3rem; flex-shrink: 0; }
+.catmgr-row-name  { font-weight: 600; font-size: 0.95rem; color: #1a202c; }
+.catmgr-row-count {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* ---- Düzenleme satırı ---- */
+.catmgr-edit-fields,
+.catmgr-add-fields {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.catmgr-name-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #1a202c;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.catmgr-name-input:focus { border-color: #667eea; }
+
+/* ---- İkon seçici ---- */
+.catmgr-icon-picker-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.catmgr-icon-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.catmgr-icon-btn:hover { border-color: #667eea; background: #f5f7ff; }
+
+.catmgr-icon-grid {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(5, 36px);
+  gap: 4px;
+  z-index: 9999;
+  width: max-content;
+}
+
+.catmgr-icon-option {
+  width: 36px;
+  height: 36px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font-size: 1.15rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.catmgr-icon-option:hover    { background: #f0f4ff; }
+.catmgr-icon-option.selected { border-color: #667eea; background: #eef2ff; }
+
+.catmgr-icon-custom {
+  grid-column: 1 / -1;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  margin-top: 2px;
+}
+
+.catmgr-icon-custom:focus { border-color: #667eea; }
+
+/* ---- Eylem butonları ---- */
+.catmgr-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.catmgr-btn {
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.catmgr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.catmgr-btn--edit   { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.catmgr-btn--edit:hover   { background: #e5e7eb; }
+
+.catmgr-btn--delete { background: none; color: #ef4444; border-color: #fca5a5; }
+.catmgr-btn--delete:hover { background: #fee2e2; }
+
+.catmgr-btn--save   { background: #667eea; color: white; }
+.catmgr-btn--save:hover:not(:disabled) { background: #5a67d8; }
+
+.catmgr-btn--cancel { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+.catmgr-btn--cancel:hover { background: #e5e7eb; }
+
+.catmgr-btn--delete-confirm { background: #ef4444; color: white; }
+.catmgr-btn--delete-confirm:hover:not(:disabled) { background: #dc2626; }
+
+/* ---- Onay satırı ---- */
+.catmgr-confirm-text {
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.catmgr-warn {
+  color: #b45309;
+  font-size: 0.82rem;
+}
+
+/* ---- Footer — Yeni Kategori Ekle ---- */
+.catmgr-footer {
+  border-top: 1px solid #e5e7eb;
+  padding: 16px 24px;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.catmgr-footer-label {
+  margin: 0 0 10px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.catmgr-add-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.catmgr-btn--add {
+  background: #667eea;
+  color: white;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.catmgr-btn--add:hover:not(:disabled) { background: #5a67d8; }
+
+/* ===== Responsive ===== */
+@media (max-width: 480px) {
+  .catmgr-modal  { border-radius: 0; max-height: 100vh; }
+  .catmgr-backdrop { padding: 0; align-items: flex-end; }
+  .catmgr-modal  { border-radius: 16px 16px 0 0; }
+
+  .catmgr-header { padding: 14px 16px; }
+  .catmgr-body   { padding: 12px 16px; }
+  .catmgr-footer { padding: 12px 16px; }
+
+  .catmgr-add-form { flex-wrap: wrap; }
+  .catmgr-btn--add { width: 100%; text-align: center; }
+
+  .catmgr-icon-grid { grid-template-columns: repeat(4, 36px); }
+}

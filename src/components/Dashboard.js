@@ -1,11 +1,14 @@
 // Ana kontrol paneli - Stok takip ekranı
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCategories } from '../contexts/CategoriesContext';
 import ProductList from './ProductList';
 import AddProductForm from './AddProductForm';
 import CategorySelection from './CategorySelection';
 import ActivityLogs from './ActivityLogs';
 import BulkProductEntry from './BulkProductEntry';
+import CategoriesManager from './CategoriesManager';
+import SettingsModal from './SettingsModal';
 import { ref, onValue, orderByChild, query } from 'firebase/database';
 import { db } from '../firebase';
 import { setProductsCache } from '../utils/offlineQueue';
@@ -24,37 +27,10 @@ function Dashboard() {
   const [showCategorySelection, setShowCategorySelection] = useState(true); // Kategori seçim ekranını kontrol eder
   const [showActivityLogs, setShowActivityLogs] = useState(false);
   const [showBulkEntry, setShowBulkEntry] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(''); // Arama sorgusu
-  const [sortBy, setSortBy] = useState('alphabetical'); // Sıralama seçeneği
-
-  // Mobil kontrolü için window width'i kontrol et
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Scroll'a dönünce menüyü kapat
-  useEffect(() => {
-    if (!isScrolled) setShowMobileMenu(false);
-  }, [isScrolled]);
-
-  // Menü dışına tıklayınca kapat
-  useEffect(() => {
-    if (!showMobileMenu) return;
-    const handleOutside = (e) => {
-      if (!e.target.closest('.mobile-menu-wrapper')) setShowMobileMenu(false);
-    };
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('touchstart', handleOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('touchstart', handleOutside);
-    };
-  }, [showMobileMenu]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showCategoriesManager, setShowCategoriesManager] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('alphabetical');
 
   // Scroll durumunu takip et
   useEffect(() => {
@@ -70,8 +46,7 @@ function Dashboard() {
   // Mobilde her zaman liste görünümü kullan
   const currentViewMode = 'list';
 
-  // Kategoriler listesi
-  const categories = ['all', 'yatak', 'kanepe', 'koltuk', 'masa', 'sandalye', 'dolap', 'diğer'];
+  const { categories: contextCategories } = useCategories();
 
   // Ürünleri Realtime Database'den getir
   const fetchProducts = () => {
@@ -162,7 +137,7 @@ function Dashboard() {
   return (
     <div className="dashboard">
       {/* Header */}
-      <header className={`dashboard-header ${isScrolled && isMobile ? 'scrolled' : ''}`}>
+      <header className={`dashboard-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="header-content">
           <div className="header-left">
             {!showCategorySelection && (
@@ -214,69 +189,21 @@ function Dashboard() {
           )}
           
           <div className="user-info">
-            {(!isScrolled || !isMobile) && (
-              <span>{currentUser.displayName}</span>
-            )}
-
-            {isScrolled && isMobile ? (
-              /* Scroll'da mobil: hamburger menü */
-              <div className="mobile-menu-wrapper">
-                <button
-                  className={`mobile-menu-btn${showMobileMenu ? ' open' : ''}`}
-                  onClick={() => setShowMobileMenu((v) => !v)}
-                  aria-label="Menü"
-                >
-                  {showMobileMenu ? '✕' : '☰'}
-                </button>
-                {showMobileMenu && (
-                  <div className="mobile-menu-dropdown">
-                    <button
-                      className="mobile-menu-item"
-                      onClick={() => { setShowBulkEntry(true); setShowMobileMenu(false); }}
-                    >
-                      <span>📦</span> Toplu Giriş
-                    </button>
-                    {!showCategorySelection && (
-                      <button
-                        className="mobile-menu-item"
-                        onClick={() => { setShowActivityLogs(true); setShowMobileMenu(false); }}
-                      >
-                        <span>📋</span> Geçmiş
-                      </button>
-                    )}
-                    <button
-                      className="mobile-menu-item logout"
-                      onClick={handleLogout}
-                    >
-                      <span>⏻</span> Çıkış Yap
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Normal görünüm */
-              <>
-                <button
-                  onClick={() => setShowBulkEntry(true)}
-                  className="bulk-entry-btn"
-                  title="Toplu Ürün Girişi"
-                >
-                  📦 Toplu Giriş
-                </button>
-                {!showCategorySelection && (
-                  <button
-                    onClick={() => setShowActivityLogs(true)}
-                    className="logs-btn"
-                    title="İşlem Geçmişi"
-                  >
-                    📋 Geçmiş
-                  </button>
-                )}
-                <button onClick={handleLogout} className="logout-btn">
-                  Çıkış Yap
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => setShowBulkEntry(true)}
+              className="bulk-entry-btn"
+              title="Toplu Ürün Girişi"
+            >
+              <span>📦</span>
+              <span className="btn-text">Toplu Giriş</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="settings-btn"
+              title="Ayarlar"
+            >
+              ⚙
+            </button>
           </div>
         </div>
       </header>
@@ -284,8 +211,7 @@ function Dashboard() {
       <div className="dashboard-content">
         {/* Kategori Seçim Ekranı veya Ürün Listesi */}
         {showCategorySelection ? (
-          <CategorySelection 
-            categories={categories}
+          <CategorySelection
             onCategorySelect={handleCategorySelect}
             products={products}
           />
@@ -303,9 +229,9 @@ function Dashboard() {
                       className="category-select"
                     >
                       <option value="all">Tüm Kategoriler</option>
-                      {categories.slice(1).map(category => (
-                        <option key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                      {contextCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.icon} {cat.name}
                         </option>
                       ))}
                     </select>
@@ -381,22 +307,20 @@ function Dashboard() {
                 
                 {showCategoryDetails && (
                   <div className="category-breakdown">
-                    {categories.slice(1).map(category => {
-                      const categoryProducts = products.filter(p => p.category === category);
-                      const categoryCount = categoryProducts.length; // Kaç çeşit ürün var
+                    {contextCategories.map(cat => {
+                      const categoryProducts = products.filter(p => p.category === cat.id);
+                      const categoryCount = categoryProducts.length;
                       const categoryTotal = categoryProducts.reduce((total, product) => {
-                        // Yeni varyant sistemi
                         if (product.variants && product.variants.length > 0) {
                           return total + (product.totalQuantity || 0);
                         }
-                        // Eski sistem - backward compatibility
                         return total + (product.quantity || 0);
                       }, 0);
                       if (categoryTotal === 0) return null;
                       return (
-                        <div key={category} className="category-item">
+                        <div key={cat.id} className="category-item">
                           <span className="category-name">
-                            {category.charAt(0).toUpperCase() + category.slice(1)}:
+                            {cat.icon} {cat.name}:
                           </span>
                           <span className="category-count">
                             <span className="variety-count">{categoryCount}</span>
@@ -494,17 +418,37 @@ function Dashboard() {
               />
             )}
             
-            {/* İşlem Geçmişi Modal */}
-            {showActivityLogs && (
-              <ActivityLogs onClose={() => setShowActivityLogs(false)} />
-            )}
           </>
         )}
       </div>
 
-      {/* Toplu Ürün Girişi Modal — kategori seçim ekranında da açılabilmesi için dışarıda */}
+      {/* İşlem Geçmişi Modal — her ekrandan açılabilsin */}
+      {showActivityLogs && (
+        <ActivityLogs onClose={() => setShowActivityLogs(false)} />
+      )}
+
+      {/* Toplu Ürün Girişi Modal */}
       {showBulkEntry && (
         <BulkProductEntry onClose={() => setShowBulkEntry(false)} />
+      )}
+
+      {/* Ayarlar Modalı */}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onOpenLogs={() => setShowActivityLogs(true)}
+          onOpenCategories={() => setShowCategoriesManager(true)}
+          onLogout={handleLogout}
+          user={currentUser}
+        />
+      )}
+
+      {/* Kategori Yönetim Modalı */}
+      {showCategoriesManager && (
+        <CategoriesManager
+          onClose={() => setShowCategoriesManager(false)}
+          products={products}
+        />
       )}
     </div>
   );

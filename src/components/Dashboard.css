@@ -141,168 +141,78 @@
 .user-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: all 0.3s ease;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.user-info span {
-  color: #4a5568;
-  font-weight: 500;
-}
 
+/* ---- Toplu Giriş Butonu ---- */
 .bulk-entry-btn {
-  padding: 8px 16px;
+  padding: 8px 14px;
   background: #f59e0b;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.3s ease;
-  min-width: 44px;
+  font-size: 0.875rem;
+  transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
+  white-space: nowrap;
 }
 
-.bulk-entry-btn:hover {
-  background: #d97706;
-  transform: scale(1.05);
+.bulk-entry-btn:hover { background: #d97706; transform: scale(1.04); }
+
+.btn-text {
+  transition: all 0.25s ease;
 }
 
-/* Scrolled durumunda toplu giriş butonu (sadece masaüstünde görünür) */
+/* Scroll'da metin gizle, ikon küçüle */
+.dashboard-header.scrolled .btn-text {
+  display: none;
+}
+
 .dashboard-header.scrolled .bulk-entry-btn {
-  padding: 8px 14px;
+  padding: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1rem;
 }
 
-.logs-btn {
-  padding: 8px 16px;
-  background: #667eea;
-  color: white;
+/* ---- Ayarlar Butonu (sadece ikon) ---- */
+.settings-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: #374151;
+  color: #e5e7eb;
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  min-width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-
-.logs-btn:hover {
-  background: #5a67d8;
-  transform: scale(1.05);
-}
-
-/* Scrolled durumunda logs butonu */
-.dashboard-header.scrolled .logs-btn {
-  padding: 8px 14px;
-}
-
-.logout-btn {
-  padding: 8px 16px;
-  background: #e53e3e;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  min-width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logout-btn:hover {
-  background: #c53030;
-  transform: scale(1.05);
-}
-
-/* Scrolled durumunda çıkış butonu */
-.dashboard-header.scrolled .logout-btn {
-  padding: 8px 14px;
-}
-
-/* ---- Mobil Hamburger Menü ---- */
-.mobile-menu-wrapper {
-  position: relative;
-}
-
-.mobile-menu-btn {
-  width: 38px;
-  height: 38px;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 8px;
+  border-radius: 50%;
   cursor: pointer;
   font-size: 1.1rem;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
   flex-shrink: 0;
 }
 
-.mobile-menu-btn.open,
-.mobile-menu-btn:hover {
-  background: #5a67d8;
+.settings-btn:hover {
+  background: #1a202c;
+  color: #fff;
+  transform: rotate(30deg) scale(1.08);
 }
 
-.mobile-menu-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-  min-width: 155px;
-  z-index: 200;
-  animation: menuSlideIn 0.15s ease;
-}
-
-@keyframes menuSlideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0);    }
-}
-
-.mobile-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 16px;
-  background: none;
-  border: none;
-  border-bottom: 1px solid #f3f4f6;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #374151;
-  text-align: left;
-  transition: background 0.15s ease;
-}
-
-.mobile-menu-item:last-child {
-  border-bottom: none;
-}
-
-.mobile-menu-item:hover {
-  background: #f8fafc;
-}
-
-.mobile-menu-item.logout {
-  color: #dc2626;
-}
-
-.mobile-menu-item.logout:hover {
-  background: #fef2f2;
+/* Scroll'da biraz küçük */
+.dashboard-header.scrolled .settings-btn {
+  width: 30px;
+  height: 30px;
+  font-size: 1rem;
 }
 
 /* ---- Dashboard Content ---- */
@@ -642,7 +552,7 @@
   .header-left {
     order: 1;
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
   }
   
@@ -655,9 +565,15 @@
   
   .user-info {
     order: 3;
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    align-self: flex-end;
+    justify-content: flex-end;
     gap: 8px;
+  }
+
+  /* Kullanıcı adı mobilde gizli — yer kazanır */
+  .user-name-label {
+    display: none;
   }
 
   .back-btn {
@@ -759,20 +675,10 @@
   }
 
   .user-info {
-    gap: 8px;
-  }
-
-  .dashboard-header.scrolled .user-info {
-    gap: 5px;
+    gap: 6px;
   }
 
   .dashboard-header.scrolled .header-content h1 {
-    font-size: 1rem;
-  }
-
-  .dashboard-header.scrolled .logout-btn {
-    min-width: 32px;
-    height: 32px;
     font-size: 1rem;
   }
 

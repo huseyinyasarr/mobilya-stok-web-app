@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useCategories } from '../contexts/CategoriesContext';
 import './ProductFormFields.css';
 
 export const CATEGORIES = [
@@ -179,22 +180,24 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
   const [dropStyle, setDropStyle] = useState({});
   const inputRef = useRef(null);
 
+  const trimmed = value.trim();
   const filtered = brands
     .filter((b) =>
-      !value.trim()
-        ? true
-        : b.toLowerCase().includes(value.toLowerCase())
+      !trimmed ? true : b.toLowerCase().includes(trimmed.toLowerCase())
     )
     .sort((a, b) => a.localeCompare(b, 'tr'));
 
-  const showList = show && filtered.length > 0;
+  // Tam eşleşme yoksa ve bir şey yazılmışsa "Yeni ekle" seçeneği göster
+  const hasExact = brands.some((b) => b.toLowerCase() === trimmed.toLowerCase());
+  const showNewOption = show && trimmed.length > 0 && !hasExact;
+  const showList = show && (filtered.length > 0 || showNewOption);
 
   const updatePos = () => {
     if (!inputRef.current) return;
     const r = inputRef.current.getBoundingClientRect();
-    const dropH = Math.min(filtered.length * 42 + 8, 200);
+    const itemCount = filtered.length + (showNewOption ? 1 : 0);
+    const dropH = Math.min(itemCount * 42 + 8, 220);
     const spaceBelow = window.innerHeight - r.bottom;
-
     setDropStyle({
       width: r.width,
       left: r.left,
@@ -210,7 +213,7 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
         ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => { onChange(e.target.value); updatePos(); }}
         onFocus={() => { updatePos(); setShow(true); }}
         onBlur={() => setShow(false)}
         placeholder={placeholder || 'Örn: Özgür, Vivinza'}
@@ -221,13 +224,13 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
         createPortal(
           <ul className="brand-suggestions-list" style={dropStyle}>
             {filtered.map((b) => {
-              const isExact = b.toLowerCase() === value.toLowerCase();
+              const isExact = b.toLowerCase() === trimmed.toLowerCase();
               return (
                 <li
                   key={b}
                   className={isExact ? 'brand-exact' : ''}
                   onPointerDown={(e) => {
-                    e.preventDefault(); // blur tetiklenmesini engelle
+                    e.preventDefault();
                     onChange(b);
                     setShow(false);
                   }}
@@ -237,6 +240,21 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
                 </li>
               );
             })}
+            {showNewOption && (
+              <li
+                className="brand-new-option"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  onChange(trimmed);
+                  setShow(false);
+                }}
+              >
+                <span className="brand-new-icon">＋</span>
+                <span>
+                  "<strong>{trimmed}</strong>" yeni marka olarak ekle
+                </span>
+              </li>
+            )}
           </ul>,
           document.body
         )}
@@ -245,45 +263,55 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
 }
 
 /**
- * CategoryInput — Aranabilir kategori seçici
+ * CategoryInput — Aranabilir + yeni kategori oluşturulabilir seçici
  *
- * Sabit CATEGORIES listesini portal dropdown olarak gösterir.
+ * Kategoriler CategoriesContext'ten okunur (Firebase).
  * Odaklanınca tüm kategoriler listelenir; yazıldıkça filtrelenir.
- * Yalnızca listede var olan kategoriler seçilebilir.
+ * Eşleşme yoksa "＋ Yeni kategori ekle" seçeneği gösterilir.
  *
- * value: category ID ('yatak', 'kanepe', …)
- * onChange: (id: string) => void
+ * value: category ID  |  onChange: (id: string) => void
  */
 export function CategoryInput({ value, onChange, disabled = false }) {
+  const { categories, addCategory } = useCategories();
+
   const [inputText, setInputText] = useState(
-    () => CATEGORIES.find((c) => c.id === value)?.name || ''
+    () => categories.find((c) => c.id === value)?.name || ''
   );
   const [show, setShow] = useState(false);
   const [userTyped, setUserTyped] = useState(false);
   const [dropStyle, setDropStyle] = useState({});
+  const [adding, setAdding] = useState(false);
   const inputRef = useRef(null);
 
-  // Dışarıdan value değişirse görünen metni güncelle
+  // Dışarıdan value veya categories değişirse görünen metni güncelle
   useEffect(() => {
     if (!show) {
-      const cat = CATEGORIES.find((c) => c.id === value);
+      const cat = categories.find((c) => c.id === value);
       setInputText(cat?.name || '');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, categories]);
 
-  const filtered = CATEGORIES.filter((c) =>
-    !userTyped || !inputText.trim()
+  const trimmed = inputText.trim();
+
+  const filtered = categories.filter((c) =>
+    !userTyped || !trimmed
       ? true
-      : c.name.toLowerCase().includes(inputText.toLowerCase())
+      : c.name.toLowerCase().includes(trimmed.toLowerCase())
   );
 
-  const showList = show && filtered.length > 0;
+  // Tam eşleşme yoksa "+ Yeni kategori ekle" göster
+  const hasExact = categories.some(
+    (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+  );
+  const showNewOption = show && userTyped && trimmed.length > 0 && !hasExact;
+  const showList = show && (filtered.length > 0 || showNewOption);
 
   const updatePos = () => {
     if (!inputRef.current) return;
     const r = inputRef.current.getBoundingClientRect();
-    const dropH = Math.min(filtered.length * 42 + 8, 220);
+    const itemCount = filtered.length + (showNewOption ? 1 : 0);
+    const dropH = Math.min(itemCount * 42 + 8, 260);
     const spaceBelow = window.innerHeight - r.bottom;
     setDropStyle({
       width: r.width,
@@ -295,7 +323,7 @@ export function CategoryInput({ value, onChange, disabled = false }) {
   };
 
   const handleFocus = () => {
-    setInputText('');   // sıfırla → tüm kategoriler görünsün
+    setInputText('');
     setUserTyped(false);
     updatePos();
     setShow(true);
@@ -314,16 +342,31 @@ export function CategoryInput({ value, onChange, disabled = false }) {
     setShow(false);
   };
 
+  const handleAddNew = async () => {
+    if (!trimmed || adding) return;
+    setAdding(true);
+    try {
+      const newId = await addCategory(trimmed);
+      onChange(newId);
+      setInputText(trimmed);
+    } catch (err) {
+      console.error('Kategori eklenemedi:', err);
+    } finally {
+      setAdding(false);
+      setShow(false);
+      setUserTyped(false);
+    }
+  };
+
   const handleBlur = () => {
-    // Tam eşleşme varsa güncelle; yoksa mevcut geçerli değere dön
-    const match = CATEGORIES.find(
-      (c) => c.name.toLowerCase() === inputText.toLowerCase()
+    const match = categories.find(
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (match) {
       onChange(match.id);
       setInputText(match.name);
     } else {
-      const current = CATEGORIES.find((c) => c.id === value);
+      const current = categories.find((c) => c.id === value);
       setInputText(current?.name || '');
     }
     setShow(false);
@@ -340,7 +383,7 @@ export function CategoryInput({ value, onChange, disabled = false }) {
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder="Kategori seçin..."
-        disabled={disabled}
+        disabled={disabled || adding}
         autoComplete="off"
       />
       {showList &&
@@ -358,10 +401,25 @@ export function CategoryInput({ value, onChange, disabled = false }) {
                   }}
                 >
                   {isSelected && <span className="brand-check-icon">✓</span>}
+                  {c.icon && <span className="cat-option-icon">{c.icon}</span>}
                   {c.name}
                 </li>
               );
             })}
+            {showNewOption && (
+              <li
+                className="brand-new-option"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleAddNew();
+                }}
+              >
+                <span className="brand-new-icon">＋</span>
+                <span>
+                  "<strong>{trimmed}</strong>" yeni kategori olarak ekle
+                </span>
+              </li>
+            )}
           </ul>,
           document.body
         )}
