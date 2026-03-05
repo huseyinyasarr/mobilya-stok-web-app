@@ -11,7 +11,7 @@ import {
   clearQueue,
   getProductsCache,
 } from '../utils/offlineQueue';
-import { CATEGORIES, VariantsEditor, StockReasonSelector, BrandInput, CategoryInput } from './ProductFormFields';
+import { VariantsEditor, StockReasonSelector, BrandInput, CategoryInput } from './ProductFormFields';
 import './ProductEditModal.css';
 import './BulkProductEntry.css';
 

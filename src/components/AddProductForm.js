@@ -3,7 +3,7 @@ import { ref, push } from 'firebase/database';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { createLog, LOG_ACTIONS } from '../utils/logging';
-import { CATEGORIES, VariantsEditor, StockReasonSelector, BrandInput, CategoryInput } from './ProductFormFields';
+import { VariantsEditor, StockReasonSelector, BrandInput, CategoryInput } from './ProductFormFields';
 import './ProductEditModal.css';
 
 function AddProductForm({ onClose, onProductAdded, brands = [] }) {
