@@ -8,6 +8,7 @@ import CategorySelection from './CategorySelection';
 import ActivityLogs from './ActivityLogs';
 import BulkProductEntry from './BulkProductEntry';
 import CategoriesManager from './CategoriesManager';
+import BrandsManager from './BrandsManager';
 import ProductsManager from './ProductsManager';
 import SettingsModal from './SettingsModal';
 import { ref, onValue, orderByChild, query } from 'firebase/database';
@@ -30,6 +31,7 @@ function Dashboard() {
   const [showBulkEntry, setShowBulkEntry] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCategoriesManager, setShowCategoriesManager] = useState(false);
+  const [showBrandsManager, setShowBrandsManager] = useState(false);
   const [showProductsManager, setShowProductsManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('alphabetical');
@@ -442,6 +444,7 @@ function Dashboard() {
           onClose={() => setShowSettings(false)}
           onOpenLogs={() => setShowActivityLogs(true)}
           onOpenCategories={() => setShowCategoriesManager(true)}
+          onOpenBrands={() => setShowBrandsManager(true)}
           onOpenProducts={() => setShowProductsManager(true)}
           onLogout={handleLogout}
           user={currentUser}
@@ -452,6 +455,14 @@ function Dashboard() {
       {showCategoriesManager && (
         <CategoriesManager
           onClose={() => setShowCategoriesManager(false)}
+          products={products}
+        />
+      )}
+
+      {/* Marka Yönetim Modalı */}
+      {showBrandsManager && (
+        <BrandsManager
+          onClose={() => setShowBrandsManager(false)}
           products={products}
         />
       )}

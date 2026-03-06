@@ -141,7 +141,9 @@ const getLogDescription = (action, userName, productInfo, details) => {
         updateDetails.push(`İsim değişti: "${details.nameChanged.from}" → "${details.nameChanged.to}"`);
       }
       if (details.brandChanged) {
-        updateDetails.push(`Marka değişti: "${details.brandChanged.from}" → "${details.brandChanged.to}"`);
+        let brandText = `Marka değişti: "${details.brandChanged.from}" → "${details.brandChanged.to}"`;
+        if (details.affectedCount) brandText += ` (${details.affectedCount} ürün)`;
+        updateDetails.push(brandText);
       }
       if (details.categoryChanged) {
         updateDetails.push(`Kategori değişti: "${details.categoryChanged.from}" → "${details.categoryChanged.to}"`);

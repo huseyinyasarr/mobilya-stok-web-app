@@ -1,0 +1,206 @@
+/* ===== Marka Yönetim Modalı ===== */
+
+.brandmgr-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: brandmgrFadeIn 0.18s ease;
+}
+
+@keyframes brandmgrFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.brandmgr-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: brandmgrSlide 0.22s ease;
+  overflow: hidden;
+}
+
+@keyframes brandmgrSlide {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.brandmgr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.brandmgr-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.brandmgr-close-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.brandmgr-close-btn:hover { background: #e5e7eb; color: #374151; }
+
+.brandmgr-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+
+.brandmgr-hint {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.brandmgr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.brandmgr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  transition: box-shadow 0.15s;
+}
+
+.brandmgr-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+.brandmgr-row--editing,
+.brandmgr-row--confirm {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  background: #f5f7ff;
+  border-color: #c7d2fe;
+}
+
+.brandmgr-row-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.brandmgr-row-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a202c;
+}
+
+.brandmgr-row-count {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.brandmgr-name-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #1a202c;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.brandmgr-name-input:focus { border-color: #667eea; }
+
+.brandmgr-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.brandmgr-btn {
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.brandmgr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.brandmgr-btn--edit   { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.brandmgr-btn--edit:hover   { background: #e5e7eb; }
+
+.brandmgr-btn--delete { background: none; color: #ef4444; border-color: #fca5a5; }
+.brandmgr-btn--delete:hover { background: #fee2e2; }
+
+.brandmgr-btn--save   { background: #667eea; color: white; }
+.brandmgr-btn--save:hover:not(:disabled) { background: #5a67d8; }
+
+.brandmgr-btn--cancel { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+.brandmgr-btn--cancel:hover { background: #e5e7eb; }
+
+.brandmgr-btn--delete-confirm { background: #ef4444; color: white; }
+.brandmgr-btn--delete-confirm:hover:not(:disabled) { background: #dc2626; }
+
+.brandmgr-confirm-text {
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.brandmgr-warn {
+  color: #b45309;
+  font-size: 0.82rem;
+}
+
+.brandmgr-empty {
+  margin: 24px 0;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .brandmgr-modal { border-radius: 0; max-height: 100vh; }
+  .brandmgr-backdrop { padding: 0; align-items: flex-end; }
+  .brandmgr-modal { border-radius: 16px 16px 0 0; }
+  .brandmgr-header { padding: 14px 16px; }
+  .brandmgr-body { padding: 12px 16px; }
+}

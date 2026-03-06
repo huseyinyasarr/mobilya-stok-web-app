@@ -10,6 +10,15 @@ function CategorySelection({ onCategorySelect, products }) {
       ? products.length
       : products.filter((p) => p.category === id).length;
 
+  // Dolu kategoriler önce, boş kategoriler sonda; aynı grupta alfabetik
+  const sortedCategories = [...categories].sort((a, b) => {
+    const countA = getCount(a.id);
+    const countB = getCount(b.id);
+    if (countA > 0 && countB === 0) return -1;
+    if (countA === 0 && countB > 0) return 1;
+    return (a.name || '').localeCompare(b.name || '', 'tr-TR');
+  });
+
   return (
     <div className="category-selection">
       <div className="category-header">
@@ -31,7 +40,7 @@ function CategorySelection({ onCategorySelect, products }) {
         </div>
 
         {/* Context'ten gelen dinamik kategoriler */}
-        {categories.map((cat) => {
+        {sortedCategories.map((cat) => {
           const count = getCount(cat.id);
           return (
             <div
