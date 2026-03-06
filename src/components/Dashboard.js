@@ -1,5 +1,6 @@
 // Ana kontrol paneli - Stok takip ekranı
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCategories } from '../contexts/CategoriesContext';
 import ProductList from './ProductList';
@@ -17,6 +18,7 @@ import { setProductsCache } from '../utils/offlineQueue';
 import './Dashboard.css';
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -442,6 +444,7 @@ function Dashboard() {
       {showSettings && (
         <SettingsModal
           onClose={() => setShowSettings(false)}
+          onOpenReport={() => navigate('/ozet')}
           onOpenLogs={() => setShowActivityLogs(true)}
           onOpenCategories={() => setShowCategoriesManager(true)}
           onOpenBrands={() => setShowBrandsManager(true)}

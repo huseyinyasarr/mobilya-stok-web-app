@@ -3,6 +3,12 @@ import './SettingsModal.css';
 
 const SETTINGS_ITEMS = [
   {
+    id: 'report',
+    icon: '📊',
+    title: 'Özet / Rapor Al',
+    desc: 'Tüm ürünleri listele, marka ve kategoriye göre filtrele',
+  },
+  {
     id: 'logs',
     icon: '📋',
     title: 'İşlem Geçmişi',
@@ -35,9 +41,10 @@ const SETTINGS_ITEMS = [
   },
 ];
 
-export default function SettingsModal({ onClose, onOpenLogs, onOpenCategories, onOpenBrands, onOpenProducts, onLogout, user }) {
+export default function SettingsModal({ onClose, onOpenReport, onOpenLogs, onOpenCategories, onOpenBrands, onOpenProducts, onLogout, user }) {
   const handleItem = (id) => {
     onClose();
+    if (id === 'report') onOpenReport?.();
     if (id === 'logs') onOpenLogs();
     if (id === 'categories') onOpenCategories();
     if (id === 'brands') onOpenBrands?.();
