@@ -1,8 +1,17 @@
 // Ürünleri listeleyen component
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { List, Grid } from 'react-window';
 import ProductEditModal from './ProductEditModal';
 import { scoreSearchTerms, formatRelativeDate } from '../utils/fuzzySearch';
 import './ProductList.css';
+
+// Virtualization sabitleri - sabit yükseklik = eşit boşluk
+const LIST_ITEM_HEIGHT = 130;
+const LIST_ITEM_GAP = 4;
+const GRID_ROW_HEIGHT = 175;
+const GRID_CARD_MIN_WIDTH = 320;
+const GRID_GAP = 10;
+const GRID_PADDING = 50;
 
 // ── Modül scope saf fonksiyonlar ─────────────────────────────────────────────
 
@@ -72,10 +81,23 @@ function getSearchResults(products, query) {
 
 function ProductList({ products, loading, onProductsChange, viewMode = 'grid', searchQuery = '', sortBy = 'alphabetical' }) {
   const [editModalProduct, setEditModalProduct] = useState(null);
+  const listContainerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(800);
 
   const openEditModal = (product) => setEditModalProduct(product);
   const closeEditModal = () => setEditModalProduct(null);
   const handleProductUpdated = () => {};
+
+  useEffect(() => {
+    const el = listContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width } = entries[0]?.contentRect ?? {};
+      if (typeof width === 'number') setContainerWidth(width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const finalProducts = useMemo(() => {
     const safeProducts = products || [];
@@ -89,6 +111,24 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
     safe.forEach((p) => { if (p.brand?.trim()) set.add(p.brand.trim()); });
     return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
   }, [products]);
+
+  const gridColumnCount = useMemo(() => {
+    const w = containerWidth - GRID_PADDING;
+    return Math.max(1, Math.floor(w / (GRID_CARD_MIN_WIDTH + GRID_GAP)));
+  }, [containerWidth]);
+
+  const gridRowCount = useMemo(() => {
+    return Math.ceil(finalProducts.length / gridColumnCount);
+  }, [finalProducts.length, gridColumnCount]);
+
+  const [virtualListHeight, setVirtualListHeight] = useState(() =>
+    typeof window !== 'undefined' ? Math.max(400, window.innerHeight - 320) : 500
+  );
+  useEffect(() => {
+    const update = () => setVirtualListHeight(Math.max(400, window.innerHeight - 320));
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   if (loading) {
     return (
@@ -356,15 +396,51 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
         )}
       </div>
       
-      {viewMode === 'grid' ? (
-        <div className="products-grid">
-          {finalProducts.map(renderGridItem)}
-        </div>
-      ) : (
-        <div className="products-list">
-          {finalProducts.map(renderListItem)}
-        </div>
-      )}
+      <div ref={listContainerRef} className="product-list-virtual-wrapper">
+        {viewMode === 'grid' ? (
+          <Grid
+            columnCount={gridColumnCount}
+            columnWidth={Math.max(200, (containerWidth - GRID_PADDING - (gridColumnCount - 1) * GRID_GAP) / gridColumnCount)}
+            rowCount={gridRowCount}
+            rowHeight={GRID_ROW_HEIGHT + GRID_GAP}
+            cellComponent={({ columnIndex, rowIndex, style, products, columnCount, renderItem }) => {
+              const index = rowIndex * columnCount + columnIndex;
+              const product = products[index];
+              if (!product) return null;
+              return (
+                <div style={style} className="virtual-grid-cell">
+                  {renderItem(product)}
+                </div>
+              );
+            }}
+            cellProps={{
+              products: finalProducts,
+              columnCount: gridColumnCount,
+              renderItem: renderGridItem,
+            }}
+            className="products-grid-virtual"
+            overscanCount={2}
+            style={{ height: virtualListHeight, width: '100%' }}
+          />
+        ) : (
+          <List
+            rowCount={finalProducts.length}
+            rowHeight={LIST_ITEM_HEIGHT + LIST_ITEM_GAP}
+            rowComponent={({ index, style, products, renderItem }) => (
+              <div style={style} className="virtual-list-row">
+                {renderItem(products[index])}
+              </div>
+            )}
+            rowProps={{
+              products: finalProducts,
+              renderItem: renderListItem,
+            }}
+            className="products-list-virtual"
+            overscanCount={3}
+            style={{ height: virtualListHeight, width: '100%' }}
+          />
+        )}
+      </div>
 
       {/* Edit Modal */}
       {editModalProduct && (

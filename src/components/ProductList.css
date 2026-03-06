@@ -294,6 +294,36 @@
   line-height: 1.5;
 }
 
+/* Virtual list wrapper */
+.product-list-virtual-wrapper {
+  padding: 25px;
+  background: #f8fafc;
+  min-height: 400px;
+}
+
+.products-list-virtual {
+  background: #f8fafc;
+}
+
+.virtual-list-row {
+  overflow: hidden;
+}
+
+.products-grid-virtual {
+  background: #f8fafc;
+}
+
+.virtual-grid-row .products-grid {
+  padding: 0;
+  animation: none;
+}
+
+.virtual-grid-cell {
+  padding-right: 6px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+}
+
 /* Ürün Grid */
 .products-grid {
   display: grid;
