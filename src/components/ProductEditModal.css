@@ -1058,12 +1058,20 @@
   }
 
   .edit-variant-inputs {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    width: 100%;
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    width: 100% !important;
     max-width: 100%;
+    min-width: 0;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible !important;
+  }
+
+  .edit-variant-inputs input,
+  .edit-color-code-input,
+  .edit-color-name-input {
+    min-width: 0 !important;
+    width: 100% !important;
   }
 
   .edit-quantity-container {
@@ -1129,10 +1137,17 @@
   }
 
   .edit-cancel-btn,
-  .edit-submit-btn,
-  .edit-delete-btn {
+  .edit-submit-btn {
     width: 100%;
     padding: 12px 20px;
+  }
+
+  /* Sil butonu mobilde daha kompakt */
+  .edit-delete-btn {
+    width: auto;
+    align-self: flex-start;
+    padding: 8px 14px;
+    font-size: 0.85rem;
   }
 
   .edit-error-message {

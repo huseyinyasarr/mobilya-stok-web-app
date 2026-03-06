@@ -1041,17 +1041,59 @@ function BulkProductEntry({ onClose }) {
           </button>
         </div>
 
-        {/* Sekmeler */}
+        {/* Sekmeler — form açıkken sekme değişiminde uyarı */}
         <div className="bulk-tabs">
           <button
             className={`bulk-tab ${activeTab === 'new_product' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('new_product'); setShowForm(false); setEditingEntry(null); }}
+            onClick={() => {
+              const switchToNew = () => {
+                setActiveTab('new_product');
+                setShowForm(false);
+                setEditingEntry(null);
+              };
+              if (showForm) {
+                const msg = activeTab === 'stock_update'
+                  ? 'Stok güncelleme formundaki veriler kaybolacak. Yeni Ürün sekmesine geçmek istiyor musunuz?'
+                  : 'Yeni ürün formundaki veriler kaybolacak. Devam etmek istiyor musunuz?';
+                setConfirmDialog({
+                  message: msg,
+                  confirmLabel: 'Evet, Geç',
+                  cancelLabel: 'İptal',
+                  variant: 'neutral',
+                  onConfirm: () => { switchToNew(); setConfirmDialog(null); },
+                  onCancel: () => setConfirmDialog(null),
+                });
+              } else {
+                switchToNew();
+              }
+            }}
           >
             Yeni Ürün
           </button>
           <button
             className={`bulk-tab ${activeTab === 'stock_update' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('stock_update'); setShowForm(false); setEditingEntry(null); }}
+            onClick={() => {
+              const switchToStock = () => {
+                setActiveTab('stock_update');
+                setShowForm(false);
+                setEditingEntry(null);
+              };
+              if (showForm) {
+                const msg = activeTab === 'new_product'
+                  ? 'Yeni ürün formundaki veriler kaybolacak. Stok Güncelleme sekmesine geçmek istiyor musunuz?'
+                  : 'Stok güncelleme formundaki veriler kaybolacak. Devam etmek istiyor musunuz?';
+                setConfirmDialog({
+                  message: msg,
+                  confirmLabel: 'Evet, Geç',
+                  cancelLabel: 'İptal',
+                  variant: 'neutral',
+                  onConfirm: () => { switchToStock(); setConfirmDialog(null); },
+                  onCancel: () => setConfirmDialog(null),
+                });
+              } else {
+                switchToStock();
+              }
+            }}
           >
             Stok Güncelleme
           </button>

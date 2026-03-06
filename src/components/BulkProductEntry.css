@@ -191,6 +191,15 @@
   gap: 8px;
 }
 
+/* 768px altında delta modda da tek sütun — renk kodu, renk adı, adet görünür */
+@media (max-width: 768px) {
+  .bulk-form-panel .edit-variant-row--delta .edit-variant-inputs {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
 /* 480px altında tek sütun — inputlar üst üste, daha okunaklı */
 @media (max-width: 480px) {
   .bulk-form-panel .edit-variant-row:not(.edit-variant-row--delta) .edit-variant-inputs {

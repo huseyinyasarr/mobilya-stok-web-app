@@ -82,7 +82,10 @@ function getSearchResults(products, query) {
 function ProductList({ products, loading, onProductsChange, viewMode = 'grid', searchQuery = '', sortBy = 'alphabetical' }) {
   const [editModalProduct, setEditModalProduct] = useState(null);
   const listContainerRef = useRef(null);
-  const [containerWidth, setContainerWidth] = useState(800);
+  // Mobilde ilk render'da doğru genişlik için window kullan (800 sabit mobilde üst üste binmeye neden oluyordu)
+  const [containerWidth, setContainerWidth] = useState(() =>
+    typeof window !== 'undefined' ? Math.min(800, window.innerWidth - 40) : 400
+  );
 
   const openEditModal = (product) => setEditModalProduct(product);
   const closeEditModal = () => setEditModalProduct(null);
@@ -126,6 +129,18 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
   );
   useEffect(() => {
     const update = () => setVirtualListHeight(Math.max(400, window.innerHeight - 320));
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Mobilde liste satırları daha yüksek (stacked layout) - sabit 130px üst üste binmeye neden oluyordu
+  const [listRowHeight, setListRowHeight] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 240 : LIST_ITEM_HEIGHT + LIST_ITEM_GAP
+  );
+  useEffect(() => {
+    const update = () =>
+      setListRowHeight(window.innerWidth < 768 ? 240 : LIST_ITEM_HEIGHT + LIST_ITEM_GAP);
+    update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
@@ -425,7 +440,7 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
         ) : (
           <List
             rowCount={finalProducts.length}
-            rowHeight={LIST_ITEM_HEIGHT + LIST_ITEM_GAP}
+            rowHeight={listRowHeight}
             rowComponent={({ index, style, products, renderItem }) => (
               <div style={style} className="virtual-list-row">
                 {renderItem(products[index])}

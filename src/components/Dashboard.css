@@ -12,6 +12,7 @@
   top: 0;
   z-index: 100;
   transition: all 0.3s ease;
+  overflow-x: hidden;
 }
 
 /* Mobilde scroll edildiğinde kompakt header */
@@ -585,27 +586,41 @@
 
   .dashboard-header.scrolled .header-content {
     flex-direction: row;
-    gap: 10px;
-    padding: 0 15px;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 0 12px;
+    min-width: 0;
   }
 
   .dashboard-header.scrolled .header-left {
     order: 1;
     width: auto;
+    min-width: 0;
+    flex: 0 1 auto;
     justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .dashboard-header.scrolled .header-left h1 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
   }
 
   .dashboard-header.scrolled .header-search {
     order: 2;
-    width: 100%;
-    max-width: 200px;
-    min-width: 150px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 140px;
   }
 
   .dashboard-header.scrolled .user-info {
     order: 3;
+    flex-shrink: 0;
     width: auto;
     justify-content: flex-end;
+    gap: 6px;
   }
 
   .header-content h1 {
@@ -678,8 +693,28 @@
     gap: 6px;
   }
 
-  .dashboard-header.scrolled .header-content h1 {
-    font-size: 1rem;
+  .dashboard-header.scrolled .header-content {
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .dashboard-header.scrolled .header-left h1 {
+    max-width: 90px;
+    font-size: 0.95rem;
+  }
+
+  .dashboard-header.scrolled .header-search {
+    max-width: 100px;
+  }
+
+  /* Ayarlar ve toplu giriş butonları mobilde taşmasın */
+  .dashboard-header.scrolled .bulk-entry-btn,
+  .dashboard-header.scrolled .settings-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    font-size: 0.95rem;
   }
 
   .stat-card {

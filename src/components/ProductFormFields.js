@@ -359,6 +359,7 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
   const [show, setShow] = useState(false);
   const [dropStyle, setDropStyle] = useState({});
   const inputRef = useRef(null);
+  const blurTimeoutRef = useRef(null);
 
   const trimmed = value.trim();
   const filtered = brands
@@ -387,6 +388,27 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
     });
   };
 
+  const handleSelect = (val) => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    onChange(val);
+    setShow(false);
+  };
+
+  const handleBlur = () => {
+    blurTimeoutRef.current = setTimeout(() => setShow(false), 200);
+  };
+
+  useEffect(() => () => {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+  }, []);
+
+  const handleItemPointerDown = (e) => {
+    if (e.pointerType === 'mouse') e.preventDefault();
+  };
+
   return (
     <div className="brand-input-wrapper">
       <input
@@ -395,7 +417,7 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
         value={value}
         onChange={(e) => { onChange(e.target.value); updatePos(); }}
         onFocus={() => { updatePos(); setShow(true); }}
-        onBlur={() => setShow(false)}
+        onBlur={handleBlur}
         placeholder={placeholder || 'Örn: Özgür Mobilya'}
         disabled={disabled}
         autoComplete="off"
@@ -409,11 +431,8 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
                 <li
                   key={b}
                   className={isExact ? 'brand-exact' : ''}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    onChange(b);
-                    setShow(false);
-                  }}
+                  onPointerDown={handleItemPointerDown}
+                  onClick={() => handleSelect(b)}
                 >
                   {isExact && <span className="brand-check-icon">✓</span>}
                   {b}
@@ -423,11 +442,8 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
             {showNewOption && (
               <li
                 className="brand-new-option"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  onChange(trimmed);
-                  setShow(false);
-                }}
+                onPointerDown={handleItemPointerDown}
+                onClick={() => handleSelect(trimmed)}
               >
                 <span className="brand-new-icon">＋</span>
                 <span>
@@ -462,6 +478,7 @@ export function CategoryInput({ value, onChange, disabled = false }) {
   const [dropStyle, setDropStyle] = useState({});
   const [adding, setAdding] = useState(false);
   const inputRef = useRef(null);
+  const blurTimeoutRef = useRef(null);
 
   // Dışarıdan value veya categories değişirse görünen metni güncelle
   useEffect(() => {
@@ -516,6 +533,10 @@ export function CategoryInput({ value, onChange, disabled = false }) {
   };
 
   const handleSelect = (cat) => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
     onChange(cat.id);
     setInputText(cat.name);
     setUserTyped(false);
@@ -539,19 +560,26 @@ export function CategoryInput({ value, onChange, disabled = false }) {
   };
 
   const handleBlur = () => {
-    const match = categories.find(
-      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (match) {
-      onChange(match.id);
-      setInputText(match.name);
-    } else {
-      const current = categories.find((c) => c.id === value);
-      setInputText(current?.name || '');
-    }
-    setShow(false);
-    setUserTyped(false);
+    blurTimeoutRef.current = setTimeout(() => {
+      const match = categories.find(
+        (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+      );
+      if (match) {
+        onChange(match.id);
+        setInputText(match.name);
+      } else {
+        const current = categories.find((c) => c.id === value);
+        setInputText(current?.name || '');
+      }
+      setShow(false);
+      setUserTyped(false);
+      blurTimeoutRef.current = null;
+    }, 200);
   };
+
+  useEffect(() => () => {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+  }, []);
 
   return (
     <div className="brand-input-wrapper">
@@ -576,9 +604,12 @@ export function CategoryInput({ value, onChange, disabled = false }) {
                   key={c.id}
                   className={isSelected ? 'brand-exact' : ''}
                   onPointerDown={(e) => {
-                    e.preventDefault();
-                    handleSelect(c);
+                    if (e.pointerType === 'mouse') {
+                      e.preventDefault();
+                      handleSelect(c);
+                    }
                   }}
+                  onClick={() => handleSelect(c)}
                 >
                   {isSelected && <span className="brand-check-icon">✓</span>}
                   {c.icon && <span className="cat-option-icon">{c.icon}</span>}
@@ -590,9 +621,12 @@ export function CategoryInput({ value, onChange, disabled = false }) {
               <li
                 className="brand-new-option"
                 onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleAddNew();
+                  if (e.pointerType === 'mouse') {
+                    e.preventDefault();
+                    handleAddNew();
+                  }
                 }}
+                onClick={() => handleAddNew()}
               >
                 <span className="brand-new-icon">＋</span>
                 <span>

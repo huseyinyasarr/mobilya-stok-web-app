@@ -324,6 +324,14 @@
   box-sizing: border-box;
 }
 
+/* Virtual grid/list - mobilde taşmayı önle */
+.virtual-grid-cell .product-card,
+.virtual-list-row .product-list-item {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 /* Ürün Grid */
 .products-grid {
   display: grid;
@@ -530,6 +538,12 @@
 
 /* Responsive Tasarım */
 @media (max-width: 768px) {
+  /* Virtual list/grid wrapper - mobilde padding azalt */
+  .product-list-virtual-wrapper {
+    padding: 15px 12px;
+    overflow-x: hidden;
+  }
+
   .product-list-header {
     flex-direction: column;
     align-items: flex-start;
@@ -602,6 +616,11 @@
 }
 
 @media (max-width: 480px) {
+  /* Virtual wrapper - küçük ekranlarda daha az padding */
+  .product-list-virtual-wrapper {
+    padding: 12px 10px;
+  }
+
   .product-list-container h2 {
     padding: 20px 15px;
     font-size: 1.25rem;

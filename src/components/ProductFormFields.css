@@ -21,6 +21,9 @@
   margin: 0;
   max-height: 200px;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   z-index: 9999;
   box-sizing: border-box;
 }
@@ -212,4 +215,92 @@
   background: #fff7ed;
   color: #9a3412;
   border: 1px solid #fdba74;
+}
+
+/* ===== Renk Çeşitleri — Mobil Responsive (hem normal hem toplu giriş) ===== */
+@media (max-width: 768px) {
+  .edit-variants-section {
+    padding: 12px 10px;
+    margin-bottom: 16px;
+  }
+
+  .edit-variants-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .edit-variants-header label {
+    font-size: 0.95rem;
+  }
+
+  .edit-variants-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Varyant satırı — mobilde dikey stack */
+  .edit-variants-section .edit-variant-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  /* Renk kodu, renk adı, adet — mobilde tek sütun, hepsi görünür */
+  .edit-variants-section .edit-variant-inputs,
+  .edit-variants-section .edit-variant-row--delta .edit-variant-inputs,
+  .bulk-form-panel .edit-variant-row--delta .edit-variant-inputs {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .edit-variants-section .edit-variant-inputs input,
+  .edit-variants-section .edit-color-code-input,
+  .edit-variants-section .edit-color-name-input {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .edit-variants-section .edit-quantity-container {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .edit-variants-section .edit-remove-variant-btn {
+    align-self: flex-end;
+  }
+
+  /* InlineReasonSelector — mobilde tam genişlik */
+  .inline-reason-selector {
+    min-width: 0;
+  }
+
+  .inline-reason-select {
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+  }
+
+  .inline-reason-desc {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-variants-section {
+    padding: 10px 8px;
+  }
+
+  .edit-variant-inputs input,
+  .edit-color-code-input,
+  .edit-color-name-input {
+    font-size: 16px !important; /* iOS zoom önleme */
+  }
 }
