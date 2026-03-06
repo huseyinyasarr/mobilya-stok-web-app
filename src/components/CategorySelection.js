@@ -61,7 +61,6 @@ function CategorySelection({ onCategorySelect, products }) {
       {products.length === 0 && (
         <div className="no-products">
           <p>Henüz hiç ürün eklenmemiş.</p>
-          <p>Yeni ürün eklemek için yukarıdaki "Yeni Ürün Ekle" butonunu kullanabilirsiniz.</p>
         </div>
       )}
     </div>
