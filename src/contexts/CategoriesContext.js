@@ -30,7 +30,7 @@ export function CategoriesProvider({ children }) {
 
   useEffect(() => {
     const catRef = ref(db, 'categories');
-    const unsub = onValue(catRef, (snap) => {
+    const unsub = onValue(catRef, async (snap) => {
       if (snap.exists()) {
         const data = snap.val();
         const cats = Object.keys(data).map((id) => ({ id, ...data[id] }));
@@ -43,7 +43,11 @@ export function CategoriesProvider({ children }) {
           const { id, ...rest } = cat;
           seed[id] = rest;
         });
-        set(catRef, seed);
+        try {
+          await set(catRef, seed);
+        } catch (err) {
+          console.error('Varsayılan kategoriler yazılamadı:', err);
+        }
         setCategories(DEFAULT_CATEGORIES);
       }
       setLoaded(true);
@@ -64,18 +68,33 @@ export function CategoriesProvider({ children }) {
     const order = categories.length > 0
       ? Math.max(...categories.map((c) => c.order ?? 0)) + 1
       : 1;
-    await set(ref(db, `categories/${id}`), { name, icon, order });
+    try {
+      await set(ref(db, `categories/${id}`), { name, icon, order });
+    } catch (err) {
+      console.error('Kategori eklenemedi:', err);
+      throw err;
+    }
     return id;
   };
 
   /** Kategori adı/ikonunu günceller */
   const updateCategory = async (id, updates) => {
-    await update(ref(db, `categories/${id}`), updates);
+    try {
+      await update(ref(db, `categories/${id}`), updates);
+    } catch (err) {
+      console.error('Kategori güncellenemedi:', err);
+      throw err;
+    }
   };
 
   /** Kategoriyi siler */
   const deleteCategory = async (id) => {
-    await remove(ref(db, `categories/${id}`));
+    try {
+      await remove(ref(db, `categories/${id}`));
+    } catch (err) {
+      console.error('Kategori silinemedi:', err);
+      throw err;
+    }
   };
 
   return (

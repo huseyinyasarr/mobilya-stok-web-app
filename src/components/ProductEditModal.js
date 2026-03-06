@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { ref, update, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useCategories } from '../contexts/CategoriesContext';
 import { createLog, LOG_ACTIONS } from '../utils/logging';
+import { buildUserRef } from '../utils/productService';
 import './ProductEditModal.css';
 
 function ProductEditModal({ product, onClose, onProductUpdated }) {
@@ -37,20 +39,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
 
 
 
-  // Kategori seçenekleri
-  const categories = [
-    { id: 'masa', name: 'Masa/Sehpa' },
-    { id: 'sandalye', name: 'Sandalye' },
-    { id: 'koltuk', name: 'Koltuk' },
-    { id: 'dolap', name: 'Dolap' },
-    { id: 'yatak', name: 'Yatak' },
-    { id: 'tv-unitesi', name: 'TV Ünitesi' },
-    { id: 'kitaplik', name: 'Kitaplık' },
-    { id: 'konsol', name: 'Konsol' },
-    { id: 'puf', name: 'Puf' },
-    { id: 'berjer', name: 'Berjer' },
-    { id: 'diger', name: 'Diğer' }
-  ];
+  const { categories } = useCategories();
 
   // Component mount olduğunda orijinal stok miktarını ayarla
   useEffect(() => {
@@ -269,11 +258,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
         quantity: Math.abs(newTotalQuantity - oldTotalQuantity),
         remainingStock: newTotalQuantity, // İşlem sonrası kalan stok
         variantChanges: changedVariants, // Hangi varyantlardan değişiklik oldu
-        user: {
-          uid: currentUser.uid,
-          email: currentUser.email,
-          displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı'
-        }
+        user: buildUserRef(currentUser),
       };
 
       // Sebep açıklamaları

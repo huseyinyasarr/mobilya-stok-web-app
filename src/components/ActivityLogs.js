@@ -1,335 +1,149 @@
 // Activity Logs Component - İşlem geçmişini görüntüler
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { db } from '../firebase';
+import { scoreSearchTerms, formatRelativeDate } from '../utils/fuzzySearch';
 import './ActivityLogs.css';
 
-  // String benzerlik hesaplama (Jaro-Winkler benzeri)
-  const calculateSimilarity = (str1, str2) => {
-    if (typeof str1 !== 'string' || typeof str2 !== 'string') return 0;
-    if (str1 === str2) return 1;
-    if (str1.length === 0 || str2.length === 0) return 0;
-    
-    const matches = [];
-    const s1_matches = new Array(str1.length).fill(false);
-    const s2_matches = new Array(str2.length).fill(false);
-    
-    const match_distance = Math.floor(Math.max(str1.length, str2.length) / 2) - 1;
-    let matches_count = 0;
-    
-    // Eşleşmeleri bul
-    for (let i = 0; i < str1.length; i++) {
-      const start = Math.max(0, i - match_distance);
-      const end = Math.min(i + match_distance + 1, str2.length);
-      
-      for (let j = start; j < end; j++) {
-        if (s2_matches[j] || str1[i] !== str2[j]) continue;
-        s1_matches[i] = s2_matches[j] = true;
-        matches.push(str1[i]);
-        matches_count++;
-        break;
-      }
-    }
-    
-    if (matches_count === 0) return 0;
-    
-    // Transpozisyonları hesapla
-    let transpositions = 0;
-    let k = 0;
-    for (let i = 0; i < str1.length; i++) {
-      if (!s1_matches[i]) continue;
-      while (!s2_matches[k]) k++;
-      if (str1[i] !== str2[k]) transpositions++;
-      k++;
-    }
-    
-    const jaro = (matches_count / str1.length + matches_count / str2.length + 
-                  (matches_count - transpositions / 2) / matches_count) / 3;
-    
-    return jaro;
-  };
+// ── Modül scope saf fonksiyonlar ─────────────────────────────────────────────
+
+function getActionIcon(action) {
+  switch (action) {
+    case 'PRODUCT_CREATED': return '➕';
+    case 'PRODUCT_UPDATED':
+    case 'PRODUCT_QUANTITY_CHANGED': return '✏️';
+    case 'PRODUCT_DELETED': return '🗑️';
+    default: return '📝';
+  }
+}
+
+function getActionClass(action) {
+  switch (action) {
+    case 'PRODUCT_CREATED': return 'action-created';
+    case 'PRODUCT_UPDATED':
+    case 'PRODUCT_QUANTITY_CHANGED': return 'action-updated';
+    case 'PRODUCT_DELETED': return 'action-deleted';
+    default: return 'action-default';
+  }
+}
+
+const ACTION_GROUPS = {
+  created: ['PRODUCT_CREATED'],
+  updated: ['PRODUCT_UPDATED', 'PRODUCT_QUANTITY_CHANGED'],
+  deleted: ['PRODUCT_DELETED'],
+};
+
+function searchLogs(logs, query) {
+  if (!query || query.trim() === '') return logs;
+  const searchTerms = query.toLowerCase().split(' ').filter((t) => t.length > 0);
+  if (searchTerms.length === 0) return logs;
+
+  return logs
+    .map((log) => {
+      if (!log || typeof log !== 'object') return { ...log, searchScore: 0 };
+      const text = [
+        log.productName || '',
+        log.description || '',
+        log.user?.displayName || '',
+        log.user?.email || '',
+        ...(log.details?.variantChanges?.added || []).map((v) => `${v.colorCode} ${v.colorName}`),
+        ...(log.details?.variantChanges?.modified || []).map((v) => `${v.colorCode} ${v.colorName}`),
+        ...(log.details?.variantChanges?.removed || []).map((v) => `${v.colorCode} ${v.colorName}`),
+        log.details?.brandName || '',
+        log.details?.categoryName || '',
+      ].join(' ').toLowerCase();
+
+      const words = text.split(' ').filter((w) => w.length > 0);
+      const { totalScore, foundTerms } = scoreSearchTerms(words, searchTerms);
+      const passes = foundTerms >= Math.ceil(searchTerms.length / 2);
+      return { ...log, searchScore: passes ? totalScore : 0 };
+    })
+    .filter((l) => l.searchScore > 0)
+    .sort((a, b) => b.searchScore - a.searchScore);
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 function ActivityLogs({ onClose }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, today, week, month
-  const [actionFilter, setActionFilter] = useState('all'); // all, created, updated, deleted
-  const [searchQuery, setSearchQuery] = useState(''); // Arama sorgusu
-  const [isSearching, setIsSearching] = useState(false); // Sadece search bar loading için
-  const [filteredLogs, setFilteredLogs] = useState([]); // Gerçek zamanlı filtrelenmiş sonuçlar
+  const [filter, setFilter] = useState('all');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const debounceRef = useRef(null);
 
-  // Log kayıtlarını getir
+  // Log kayıtlarını gerçek zamanlı dinle
   useEffect(() => {
+    const logsRef = ref(db, 'logs');
+    const q = query(logsRef, orderByChild('timestamp'), limitToLast(200));
+    let unsubscribe;
     try {
-      const logsRef = ref(db, 'logs');
-      // Son 200 kaydı getir, timestamp'e göre sıralı
-      const q = query(logsRef, orderByChild('timestamp'), limitToLast(200));
-      
-      const unsubscribe = onValue(q, (snapshot) => {
+      unsubscribe = onValue(q, (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const logsData = Object.keys(data)
-            .map(key => ({
-              id: key,
-              ...data[key]
-            }))
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // En yeni önce
-          
+            .map((key) => ({ id: key, ...data[key] }))
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           setLogs(logsData);
-          setFilteredLogs(logsData); // Başlangıçta tüm loglar gösteriliyor
         } else {
           setLogs([]);
-          setFilteredLogs([]);
         }
         setLoading(false);
       }, (error) => {
         console.error('Log kayıtları getirilirken hata:', error);
         setLogs([]);
-        setFilteredLogs([]);
         setLoading(false);
       });
-
-      return () => unsubscribe();
     } catch (error) {
       console.error('Log dinleme hatası:', error);
       setLoading(false);
     }
+    return () => unsubscribe && unsubscribe();
   }, []);
 
-
-
-  // Akıllı arama fonksiyonu
-  const getSearchResults = useCallback((logs, query) => {
-    if (!logs || !Array.isArray(logs)) return [];
-    if (!query || query.trim() === '') return logs;
-    
-    const searchTerms = query.toLowerCase()
-      .split(' ')
-      .filter(term => term.length > 0);
-    
-    if (searchTerms.length === 0) return logs;
-    
-    // Her log için relevance score hesapla
-    const scoredLogs = logs.map(log => {
-      if (!log || typeof log !== 'object') {
-        return { ...log, searchScore: 0 };
-      }
-      
-      // Aranabilir metin oluştur
-      const searchableText = [
-        log.productName || '',
-        log.description || '',
-        log.user?.displayName || '',
-        log.user?.email || '',
-        // Variant detayları
-        ...(log.details?.variantChanges?.added || []).map(v => `${v.colorCode} ${v.colorName}`),
-        ...(log.details?.variantChanges?.modified || []).map(v => `${v.colorCode} ${v.colorName}`),
-        ...(log.details?.variantChanges?.removed || []).map(v => `${v.colorCode} ${v.colorName}`),
-        // Diğer detaylar
-        log.details?.brandName || '',
-        log.details?.categoryName || ''
-      ].join(' ').toLowerCase();
-      
-      const words = searchableText.split(' ').filter(word => word.length > 0);
-      
-      let totalScore = 0;
-      let foundTerms = 0;
-      
-      searchTerms.forEach(term => {
-        let bestScore = 0;
-        let termFound = false;
-        
-        words.forEach(word => {
-          if (word === term) {
-            // Tam kelime eşleşmesi
-            bestScore = Math.max(bestScore, 100);
-            termFound = true;
-          } else if (word.startsWith(term)) {
-            // Kelime başlangıcı eşleşmesi
-            bestScore = Math.max(bestScore, 80);
-            termFound = true;
-          } else if (word.includes(term)) {
-            // Kelime içi eşleşme
-            bestScore = Math.max(bestScore, 50);
-            termFound = true;
-          } else if (term.length >= 3) {
-            // Fuzzy matching
-            const similarity = calculateSimilarity(term, word);
-            if (similarity > 0.7) {
-              bestScore = Math.max(bestScore, similarity * 40);
-              termFound = true;
-            }
-          }
-        });
-        
-        if (termFound) {
-          foundTerms++;
-          totalScore += bestScore;
-        }
-      });
-      
-      // En az terimlerin yarısı bulunmuş olmalı
-      const relevanceThreshold = foundTerms >= Math.ceil(searchTerms.length / 2);
-      
-      return {
-        ...log,
-        searchScore: relevanceThreshold ? totalScore : 0,
-        isVisible: relevanceThreshold
-      };
-    });
-    
-    // Sadece eşleşen sonuçları filtrele ve score'a göre sırala
-    const filteredResults = scoredLogs.filter(log => log.searchScore > 0);
-    return filteredResults.sort((a, b) => b.searchScore - a.searchScore);
-      }, []);
-
-  // Arama işlevi değiştiğinde - gerçek zamanlı filtreleme
+  // Debounce arama girdisi
   const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    
-    // Sadece search bar'da loading göster
-    setIsSearching(true);
-    
-    // Küçük bir debounce ile arama
-    setTimeout(() => {
-      const baseResults = getBaseFilteredLogs(logs);
-      
-      if (query.trim() !== '') {
-        const results = getSearchResults(baseResults, query);
-        setFilteredLogs(results);
-      } else {
-        setFilteredLogs(baseResults);
-      }
-      
-      setIsSearching(false);
-    }, 200);
+    const value = e.target.value;
+    setSearchQuery(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(value), 200);
   };
 
-  // Arama temizleme
   const clearSearch = () => {
-    setIsSearching(false);
     setSearchQuery('');
-    setFilteredLogs(getBaseFilteredLogs(logs));
+    setDebouncedQuery('');
+    clearTimeout(debounceRef.current);
   };
 
-  // Temel filtreleme (zaman ve işlem türü)
-  const getBaseFilteredLogs = useCallback((logs) => {
-    let filtered = [...logs];
-    
+  // Tüm filtreleme useMemo ile türetilmiş değer
+  const filteredLogs = useMemo(() => {
+    let result = logs;
+
     // Zaman filtresi
     if (filter !== 'all') {
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      let cutoffDate;
-      
-      switch (filter) {
-        case 'today':
-          cutoffDate = startOfDay;
-          break;
-        case 'week':
-          cutoffDate = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          cutoffDate = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          cutoffDate = null;
-      }
-      
-      if (cutoffDate) {
-        filtered = filtered.filter(log => new Date(log.timestamp) >= cutoffDate);
-      }
+      let cutoff;
+      if (filter === 'today') cutoff = startOfDay;
+      else if (filter === 'week') cutoff = new Date(startOfDay - 7 * 24 * 60 * 60 * 1000);
+      else if (filter === 'month') cutoff = new Date(startOfDay - 30 * 24 * 60 * 60 * 1000);
+      if (cutoff) result = result.filter((l) => new Date(l.timestamp) >= cutoff);
     }
-    
+
     // İşlem türü filtresi
-    if (actionFilter !== 'all') {
-      const actionGroups = {
-        'created': ['PRODUCT_CREATED'],
-        'updated': ['PRODUCT_UPDATED', 'PRODUCT_QUANTITY_CHANGED'],
-        'deleted': ['PRODUCT_DELETED'],
-      };
-      const group = actionGroups[actionFilter];
-      if (group) {
-        filtered = filtered.filter(log => group.includes(log.action));
-      }
-    }
-    
-    return filtered;
-  }, [filter, actionFilter]);
+    const group = ACTION_GROUPS[actionFilter];
+    if (group) result = result.filter((l) => group.includes(l.action));
 
-  // Filtreler değiştiğinde
-  useEffect(() => {
-    const baseFiltered = getBaseFilteredLogs(logs);
-    
-    if (searchQuery.trim()) {
-      const results = getSearchResults(baseFiltered, searchQuery);
-      setFilteredLogs(results);
-    } else {
-      setFilteredLogs(baseFiltered);
-    }
-  }, [filter, actionFilter, logs, searchQuery, getBaseFilteredLogs, getSearchResults]);
+    // Arama filtresi
+    return searchLogs(result, debouncedQuery);
+  }, [logs, filter, actionFilter, debouncedQuery]);
 
-  // Tarih formatı
-  const formatDate = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-    
-    if (diffInMinutes < 1) {
-      return 'Az önce';
-    } else if (diffInMinutes < 60) {
-      return `${diffInMinutes} dakika önce`;
-    } else if (diffInMinutes < 1440) { // 24 saat
-      const hours = Math.floor(diffInMinutes / 60);
-      return `${hours} saat önce`;
-    } else {
-      return date.toLocaleDateString('tr-TR', {
-        day: '2-digit',
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-  };
-
-  // İşlem türüne göre ikon
-  const getActionIcon = (action) => {
-    switch (action) {
-      case 'PRODUCT_CREATED':
-        return '➕';
-      case 'PRODUCT_UPDATED':
-      case 'PRODUCT_QUANTITY_CHANGED':
-        return '✏️';
-      case 'PRODUCT_DELETED':
-        return '🗑️';
-      default:
-        return '📝';
-    }
-  };
-
-  // İşlem türüne göre renk sınıfı
-  const getActionClass = (action) => {
-    switch (action) {
-      case 'PRODUCT_CREATED':
-        return 'action-created';
-      case 'PRODUCT_UPDATED':
-      case 'PRODUCT_QUANTITY_CHANGED':
-        return 'action-updated';
-      case 'PRODUCT_DELETED':
-        return 'action-deleted';
-      default:
-        return 'action-default';
-    }
-  };
-
-  // Modal dışına tıklama ile kapatma
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    if (e.target === e.currentTarget) onClose();
   };
+
+  const formatDate = (ts) => formatRelativeDate(ts);
 
   return (
     <div className="logs-modal-backdrop" onClick={handleBackdropClick}>
@@ -358,13 +172,7 @@ function ActivityLogs({ onClose }) {
                 ✕
               </button>
             )}
-            <div className="logs-search-icon">
-              {isSearching ? (
-                <div className="logs-inline-spinner"></div>
-              ) : (
-                '🔍'
-              )}
-            </div>
+            <div className="logs-search-icon">🔍</div>
           </div>
           {searchQuery && (
             <div className="logs-search-info">

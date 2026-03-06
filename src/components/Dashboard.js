@@ -1,5 +1,5 @@
 // Ana kontrol paneli - Stok takip ekranı
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCategories } from '../contexts/CategoriesContext';
 import ProductList from './ProductList';
@@ -48,13 +48,12 @@ function Dashboard() {
 
   const { categories: contextCategories } = useCategories();
 
-  // Ürünleri Realtime Database'den getir
-  const fetchProducts = () => {
+  // Ürünleri Realtime Database'den gerçek zamanlı dinle; unsubscribe döner
+  const subscribeToProducts = useCallback(() => {
     try {
       const productsRef = ref(db, 'products');
       const q = query(productsRef, orderByChild('name'));
-      
-      onValue(q, (snapshot) => {
+      const unsubscribe = onValue(q, (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const productsData = Object.keys(data).map(key => ({
@@ -62,7 +61,7 @@ function Dashboard() {
             ...data[key]
           }));
           setProducts(productsData);
-          setProductsCache(data); // Offline kullanım için önbelleğe al
+          setProductsCache(data);
         } else {
           setProducts([]);
           setProductsCache({});
@@ -73,28 +72,31 @@ function Dashboard() {
         setProducts([]);
         setLoading(false);
       });
-      
+      return unsubscribe;
     } catch (error) {
       console.error('Database bağlantı hatası:', error);
       setProducts([]);
       setLoading(false);
+      return () => {};
     }
-  };
-
-  // Component yüklendiğinde ürünleri getir
-  useEffect(() => {
-    fetchProducts();
   }, []);
 
-  // Kategoriye ve markaya göre filtrelenmiş ürünler
-  const filteredProducts = products.filter(product => {
+  // Component yüklendiğinde dinleyiciyi başlat; unmount'ta temizle
+  useEffect(() => {
+    const unsubscribe = subscribeToProducts();
+    return () => unsubscribe();
+  }, [subscribeToProducts]);
+
+  const filteredProducts = useMemo(() => products.filter((product) => {
     const categoryMatch = selectedCategory === 'all' || product.category === selectedCategory;
     const brandMatch = selectedBrand === 'all' || product.brand === selectedBrand;
     return categoryMatch && brandMatch;
-  });
+  }), [products, selectedCategory, selectedBrand]);
 
-  // Mevcut markaları al
-  const availableBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
+  const availableBrands = useMemo(
+    () => [...new Set(products.map((p) => p.brand).filter(Boolean))].sort(),
+    [products]
+  );
 
   // Arama işlevi değiştiğinde
   const handleSearchChange = (e) => {
@@ -403,7 +405,7 @@ function Dashboard() {
             <ProductList 
               products={filteredProducts} 
               loading={loading}
-              onProductsChange={fetchProducts}
+              onProductsChange={() => {}}
               viewMode={currentViewMode}
               searchQuery={searchQuery}
               sortBy={sortBy}
@@ -413,7 +415,7 @@ function Dashboard() {
             {showAddForm && (
               <AddProductForm
                 onClose={() => setShowAddForm(false)}
-                onProductAdded={fetchProducts}
+                onProductAdded={() => {}}
                 brands={availableBrands}
               />
             )}

@@ -234,6 +234,16 @@ export async function saveProductResolved({
   });
 }
 
+// ── Kullanıcı referansı yardımcısı ────────────────────────────────────────────
+
+export function buildUserRef(user) {
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName || 'Bilinmeyen Kullanıcı',
+  };
+}
+
 // ── İç yardımcı fonksiyonlar ──────────────────────────────────────────────────
 
 /**
@@ -406,11 +416,7 @@ async function performCreate({
     totalQuantity,
     createdAt: now,
     lastUpdated: now,
-    createdBy: {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı',
-    },
+    createdBy: buildUserRef(currentUser),
     stockHistory: [stockEntry],
   };
 
@@ -431,7 +437,81 @@ async function performCreate({
   return { id: newRef.key, action: 'created', totalQuantity };
 }
 
-function buildStockEntry({
+/**
+ * Toplu giriş kuyruğundaki stok güncelleme kaydını Firebase'e yazar.
+ * BulkProductEntry tarafından çağrılır.
+ */
+export async function syncBulkStockUpdate(entry, currentUser) {
+  const d = entry.data;
+  const productRef = ref(db, `products/${d.productId}`);
+  const now = new Date().toISOString();
+  let updatedProduct = null;
+  const totalDelta = d.deltaVariants.reduce((s, v) => s + v.delta, 0);
+
+  await runTransaction(productRef, (currentData) => {
+    if (!currentData) return currentData;
+
+    let variants = currentData.variants ? [...currentData.variants] : [];
+    const variantChanges = [];
+
+    for (const dv of d.deltaVariants) {
+      const key = `${dv.colorCode}_${dv.colorName}`;
+      const idx = variants.findIndex((v) => `${v.colorCode}_${v.colorName}` === key);
+
+      if (idx !== -1) {
+        const oldQty = variants[idx].quantity || 0;
+        const newQty = Math.max(0, oldQty + dv.delta);
+        variantChanges.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantityChange: dv.delta, oldQuantity: oldQty, newQuantity: newQty });
+        variants[idx] = { ...variants[idx], quantity: newQty };
+      } else if (dv.delta > 0) {
+        variantChanges.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantityChange: dv.delta, oldQuantity: 0, newQuantity: dv.delta });
+        variants.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantity: dv.delta });
+      }
+    }
+
+    const oldTotal = currentData.totalQuantity || 0;
+    const newTotal = Math.max(0, oldTotal + totalDelta);
+
+    const stockEntry = buildStockEntry({
+      type: totalDelta >= 0 ? 'increase' : 'decrease',
+      stockReason: d.stockReason,
+      returnReason: d.returnReason || null,
+      returnDescription: d.returnDescription || null,
+      quantity: Math.abs(totalDelta),
+      remainingStock: newTotal,
+      variantChanges,
+      currentUser,
+      now,
+    });
+
+    const existingHistory = currentData.stockHistory
+      ? Object.values(currentData.stockHistory)
+      : [];
+
+    updatedProduct = {
+      ...currentData,
+      variants,
+      totalQuantity: newTotal,
+      lastUpdated: now,
+      quantity: null,
+      stockHistory: [...existingHistory, stockEntry],
+    };
+
+    return updatedProduct;
+  });
+
+  if (updatedProduct) {
+    const newTotal = updatedProduct.totalQuantity;
+    await createLog(
+      LOG_ACTIONS.PRODUCT_UPDATED,
+      currentUser,
+      { id: d.productId, name: d.productName, brand: d.brand, category: d.category, totalQuantity: newTotal },
+      { quantityChange: { from: newTotal - totalDelta, to: newTotal }, stockChangeType: totalDelta >= 0 ? 'increase' : 'decrease', stockChangeReason: d.stockReason }
+    );
+  }
+}
+
+export function buildStockEntry({
   type,
   stockReason,
   returnReason,
@@ -449,11 +529,7 @@ function buildStockEntry({
     quantity,
     remainingStock,
     variantChanges,
-    user: {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı',
-    },
+    user: buildUserRef(currentUser),
   };
 
   if (stockReason === 'return') {

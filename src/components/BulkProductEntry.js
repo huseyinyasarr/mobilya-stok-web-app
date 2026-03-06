@@ -1,9 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ref, runTransaction } from 'firebase/database';
-import { db } from '../firebase';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { createLog, LOG_ACTIONS } from '../utils/logging';
-import { saveProduct, saveProductResolved, applyConflictResolutions } from '../utils/productService';
+import { saveProduct, saveProductResolved, applyConflictResolutions, syncBulkStockUpdate } from '../utils/productService';
 import {
   getQueue,
   addToQueue,
@@ -747,15 +744,16 @@ function BulkProductEntry({ onClose }) {
   const [editingEntry, setEditingEntry] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
 
-  const cachedProducts = (() => {
+  const cachedProducts = useMemo(() => {
     const cache = getProductsCache();
     if (!cache || !cache.products) return [];
     return Object.keys(cache.products).map((id) => ({ id, ...cache.products[id] }));
-  })();
+  }, []);
 
-  const availableBrands = [
-    ...new Set(cachedProducts.map((p) => p.brand).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b, 'tr'));
+  const availableBrands = useMemo(
+    () => [...new Set(cachedProducts.map((p) => p.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')),
+    [cachedProducts]
+  );
 
   const refreshQueue = useCallback(() => setQueue(getQueue()), []);
 
@@ -844,7 +842,7 @@ function BulkProductEntry({ onClose }) {
         if (entry.type === 'new_product') {
           await syncNewProduct(entry, currentUser);
         } else if (entry.type === 'stock_update') {
-          await syncStockUpdate(entry, currentUser);
+          await syncBulkStockUpdate(entry, currentUser);
         }
         removeFromQueue(entry.id);
         successCount++;
@@ -869,9 +867,10 @@ function BulkProductEntry({ onClose }) {
     refreshQueue();
   };
 
-  const pendingCount = queue.filter(
-    (e) => e.status === 'pending' || e.status === 'error' || e.status === 'conflict'
-  ).length;
+  const pendingCount = useMemo(
+    () => queue.filter((e) => e.status === 'pending' || e.status === 'error' || e.status === 'conflict').length,
+    [queue]
+  );
 
   // Mobilde kuyruk varsayılan kapalı, masaüstünde açık
   const [queueOpen, setQueueOpen] = useState(() => window.innerWidth > 768);
@@ -1116,109 +1115,5 @@ function buildConflictMessage(conflicts) {
     .join('\n');
 }
 
-async function syncStockUpdate(entry, currentUser) {
-  const d = entry.data;
-  const productRef = ref(db, `products/${d.productId}`);
-  let updatedProduct = null;
-
-  await runTransaction(productRef, (currentData) => {
-    if (!currentData) return currentData;
-
-    const now = new Date().toISOString();
-    let variants = currentData.variants ? [...currentData.variants] : [];
-    const variantChanges = [];
-
-    for (const dv of d.deltaVariants) {
-      const key = `${dv.colorCode}_${dv.colorName}`;
-      const existingIdx = variants.findIndex(
-        (v) => `${v.colorCode}_${v.colorName}` === key
-      );
-
-      if (existingIdx !== -1) {
-        const oldQty = variants[existingIdx].quantity || 0;
-        const newQty = Math.max(0, oldQty + dv.delta);
-        variantChanges.push({
-          colorCode: dv.colorCode,
-          colorName: dv.colorName,
-          quantityChange: dv.delta,
-          oldQuantity: oldQty,
-          newQuantity: newQty,
-        });
-        variants[existingIdx] = { ...variants[existingIdx], quantity: newQty };
-      } else if (dv.delta > 0) {
-        variantChanges.push({
-          colorCode: dv.colorCode,
-          colorName: dv.colorName,
-          quantityChange: dv.delta,
-          oldQuantity: 0,
-          newQuantity: dv.delta,
-        });
-        variants.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantity: dv.delta });
-      }
-    }
-
-    const totalDelta = d.deltaVariants.reduce((s, v) => s + v.delta, 0);
-    const oldTotal = currentData.totalQuantity || 0;
-    const newTotal = Math.max(0, oldTotal + totalDelta);
-
-    const stockEntry = {
-      date: now,
-      type: totalDelta >= 0 ? 'increase' : 'decrease',
-      reason: d.stockReason,
-      quantity: Math.abs(totalDelta),
-      remainingStock: newTotal,
-      variantChanges,
-      user: {
-        uid: currentUser.uid,
-        email: currentUser.email,
-        displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı',
-      },
-    };
-
-    if (d.returnReason) {
-      stockEntry.returnReason = d.returnReason;
-      if (d.returnReason === 'other' && d.returnDescription) {
-        stockEntry.returnDescription = d.returnDescription;
-      }
-    }
-
-    const existingHistory = currentData.stockHistory
-      ? Object.values(currentData.stockHistory)
-      : [];
-
-    updatedProduct = {
-      ...currentData,
-      variants,
-      totalQuantity: newTotal,
-      lastUpdated: now,
-      quantity: null,
-      stockHistory: [...existingHistory, stockEntry],
-    };
-
-    return updatedProduct;
-  });
-
-  if (updatedProduct) {
-    const totalDelta = d.deltaVariants.reduce((s, v) => s + v.delta, 0);
-    const newTotal = updatedProduct.totalQuantity;
-
-    await createLog(
-      LOG_ACTIONS.PRODUCT_UPDATED,
-      currentUser,
-      {
-        id: d.productId,
-        name: d.productName,
-        brand: d.brand,
-        category: d.category,
-        totalQuantity: newTotal,
-      },
-      {
-        quantityChange: { from: newTotal - totalDelta, to: newTotal },
-        stockChangeType: totalDelta >= 0 ? 'increase' : 'decrease',
-        stockChangeReason: d.stockReason,
-      }
-    );
-  }
-}
 
 export default BulkProductEntry;
