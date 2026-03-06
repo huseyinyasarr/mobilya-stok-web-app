@@ -131,7 +131,7 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
-    category: 'yatak',
+    category: '',
     description: '',
   });
   const [variants, setVariants] = useState([
@@ -326,7 +326,7 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="Örn: 90x190 Stress Out"
+                  placeholder="Örn: Stress Out"
                   disabled={loading}
                   required
                 />

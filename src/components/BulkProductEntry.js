@@ -17,7 +17,7 @@ import './BulkProductEntry.css';
 // Mevcut ürün varyantlarını delta moduna dönüştür (mevcut adet bilgisiyle)
 // originalColorCode / originalColorName: Firebase'de eşleştirme için kullanılır,
 // kullanıcı kodu/adı değiştirse bile asıl kayıt bulunabilir.
-const DEFAULT_REASON = { stockReason: 'purchase', returnReason: '', returnDescription: '' };
+const DEFAULT_REASON = { stockReason: '', returnReason: '', returnDescription: '' };
 
 const buildDeltaFromProduct = (product) => {
   if (product.variants && product.variants.length > 0) {
@@ -57,7 +57,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
   const [formData, setFormData] = useState({
     name: initialData?.name ?? '',
     brand: initialData?.brand ?? '',
-    category: initialData?.category ?? 'yatak',
+    category: initialData?.category ?? '',
     description: initialData?.description ?? '',
   });
   const [variants, setVariants] = useState(() => {
@@ -143,7 +143,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
           <label>Ürün Adı *</label>
           <input
             type="text"
-            placeholder="Örn: 90x190 Stress Out"
+            placeholder="Örn: Stress Out"
             value={formData.name}
             onChange={(e) => setField('name', e.target.value)}
           />
@@ -238,8 +238,6 @@ function StockUpdateForm({ cachedProducts, availableBrands = [], queue = [], onA
   const [infoBrand, setInfoBrand] = useState(initialProduct?.brand || '');
   const [infoCategory, setInfoCategory] = useState(initialProduct?.category || '');
 
-  const totalDelta = getTotalDelta(deltaVariants);
-
   // Seçili ürün için kuyruktaki bekleyen işlem sayısı
   const pendingCount = selectedProduct
     ? queue.filter((e) => e.type === 'stock_update' && e.data?.productId === selectedProduct.id).length
@@ -325,7 +323,7 @@ function StockUpdateForm({ cachedProducts, availableBrands = [], queue = [], onA
         (v.colorName || '') !== (v.originalColorName || '')
       )
     );
-    const hasQuantityChange = totalDelta !== 0;
+    const hasQuantityChange = deltaVariants.some((v) => (parseInt(v.delta) || 0) !== 0);
     const hasNewVariant = deltaVariants.some((v) => v.isNew && (parseInt(v.delta) || 0) > 0);
     const hasDeletion = deltaVariants.some((v) => v.isDeleting);
 
@@ -975,6 +973,10 @@ function BulkProductEntry({ onClose }) {
         }
         removeFromQueue(entry.id);
         successCount++;
+        // Her girişten sonra kısa gecikme — Firebase log yazımlarının tamamlanması için
+        if (successCount < pending.length) {
+          await new Promise((r) => setTimeout(r, 150));
+        }
       } catch (err) {
         console.error('Senkronizasyon hatası:', err);
         updateQueueEntry(entry.id, {

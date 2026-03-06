@@ -34,7 +34,7 @@ export function CategoriesProvider({ children }) {
       if (snap.exists()) {
         const data = snap.val();
         const cats = Object.keys(data).map((id) => ({ id, ...data[id] }));
-        cats.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+        cats.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr-TR'));
         setCategories(cats);
       } else {
         // Veritabanında kategori yoksa varsayılanları ekle
@@ -48,7 +48,8 @@ export function CategoriesProvider({ children }) {
         } catch (err) {
           console.error('Varsayılan kategoriler yazılamadı:', err);
         }
-        setCategories(DEFAULT_CATEGORIES);
+        const sorted = [...DEFAULT_CATEGORIES].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr-TR'));
+        setCategories(sorted);
       }
       setLoaded(true);
     });

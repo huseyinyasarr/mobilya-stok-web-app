@@ -1,9 +1,12 @@
 // Activity Logs Component - İşlem geçmişini görüntüler
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { List } from 'react-window';
 import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { db } from '../firebase';
 import { scoreSearchTerms, formatRelativeDate } from '../utils/fuzzySearch';
 import './ActivityLogs.css';
+
+const LOG_ITEM_HEIGHT = 120;
 
 // ── Modül scope saf fonksiyonlar ─────────────────────────────────────────────
 
@@ -42,15 +45,15 @@ function searchLogs(logs, query) {
     .map((log) => {
       if (!log || typeof log !== 'object') return { ...log, searchScore: 0 };
       const text = [
-        log.productName || '',
+        log.product?.name || log.productName || '',
         log.description || '',
         log.user?.displayName || '',
         log.user?.email || '',
         ...(log.details?.variantChanges?.added || []).map((v) => `${v.colorCode} ${v.colorName}`),
         ...(log.details?.variantChanges?.modified || []).map((v) => `${v.colorCode} ${v.colorName}`),
         ...(log.details?.variantChanges?.removed || []).map((v) => `${v.colorCode} ${v.colorName}`),
-        log.details?.brandName || '',
-        log.details?.categoryName || '',
+        log.details?.brandName || log.product?.brand || '',
+        log.details?.categoryName || log.product?.category || '',
       ].join(' ').toLowerCase();
 
       const words = text.split(' ').filter((w) => w.length > 0);
@@ -145,6 +148,75 @@ function ActivityLogs({ onClose }) {
 
   const formatDate = (ts) => formatRelativeDate(ts);
 
+  const logsListHeight = Math.max(300, typeof window !== 'undefined' ? window.innerHeight - 380 : 400);
+
+  const renderLogItem = (log) => (
+    <div
+      className={`log-item ${getActionClass(log.action)} ${
+        searchQuery && log.isVisible !== undefined ? (log.isVisible ? 'log-visible' : 'log-hidden') : 'log-visible'
+      }`}
+    >
+      <div className="log-icon">{getActionIcon(log.action)}</div>
+      <div className="log-details">
+        <div className="log-description">{log.description}</div>
+        <div className="log-meta">
+          <div className="log-user">
+            {log.user?.photoURL && (
+              <img src={log.user.photoURL} alt={log.user.displayName} className="user-avatar" />
+            )}
+            <span className="user-name">
+              {log.user?.displayName || log.user?.email || 'Bilinmeyen Kullanıcı'}
+            </span>
+          </div>
+          <div className="log-time">{formatDate(log.timestamp)}</div>
+        </div>
+        {log.details && Object.keys(log.details).length > 0 && (
+          <div className="log-extra-details">
+            {log.details.quantityChange && (
+              <span className="detail-item quantity-change">
+                Toplam Stok: {log.details.quantityChange.from} → {log.details.quantityChange.to}
+              </span>
+            )}
+            {log.details.variantChanges && (
+              <div className="variant-changes">
+                {log.details.variantChanges.added?.map((variant, index) => (
+                  <span key={`a-${index}`} className="detail-item variant-added">
+                    ➕ {variant.colorCode} {variant.colorName} ({variant.quantity} adet)
+                  </span>
+                ))}
+                {log.details.variantChanges.modified?.map((change, index) => (
+                  <span key={`m-${index}`} className="detail-item variant-modified">
+                    ✏️ {change.colorCode} {change.colorName}: {change.oldQuantity} → {change.newQuantity}
+                  </span>
+                ))}
+                {log.details.variantChanges.removed?.map((variant, index) => (
+                  <span key={`r-${index}`} className="detail-item variant-removed">
+                    🗑️ {variant.colorCode} {variant.colorName} ({variant.quantity} adet)
+                  </span>
+                ))}
+              </div>
+            )}
+            {log.details.nameChanged && (
+              <span className="detail-item name-changed">
+                İsim değiştirildi: "{log.details.nameChanged.from}" → "{log.details.nameChanged.to}"
+              </span>
+            )}
+            {log.details.brandChanged && (
+              <span className="detail-item brand-changed">
+                Marka değiştirildi: "{log.details.brandChanged.from}" → "{log.details.brandChanged.to}"
+              </span>
+            )}
+            {log.details.categoryChanged && (
+              <span className="detail-item category-changed">
+                Kategori değiştirildi: "{log.details.categoryChanged.from}" → "{log.details.categoryChanged.to}"
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="logs-modal-backdrop" onClick={handleBackdropClick}>
       <div className="logs-modal-content">
@@ -238,98 +310,22 @@ function ActivityLogs({ onClose }) {
               )}
             </div>
           ) : (
-            <div className="logs-list">
-              {filteredLogs.map((log) => (
-                <div 
-                  key={log.id} 
-                  className={`log-item ${getActionClass(log.action)} ${
-                    searchQuery && log.isVisible !== undefined 
-                      ? log.isVisible ? 'log-visible' : 'log-hidden' 
-                      : 'log-visible'
-                  }`}
-                >
-                  <div className="log-icon">
-                    {getActionIcon(log.action)}
+            <div className="logs-list logs-list-virtual">
+              <List
+                rowCount={filteredLogs.length}
+                rowHeight={LOG_ITEM_HEIGHT}
+                overscanCount={5}
+                style={{ height: logsListHeight, width: '100%' }}
+                rowComponent={({ index, style, logs, renderLog }) => (
+                  <div style={style} className="log-virtual-row">
+                    {renderLog(logs[index])}
                   </div>
-                  
-                  <div className="log-details">
-                    <div className="log-description">
-                      {log.description}
-                    </div>
-                    
-                    <div className="log-meta">
-                      <div className="log-user">
-                        {log.user?.photoURL && (
-                          <img 
-                            src={log.user.photoURL} 
-                            alt={log.user.displayName}
-                            className="user-avatar"
-                          />
-                        )}
-                        <span className="user-name">
-                          {log.user?.displayName || log.user?.email || 'Bilinmeyen Kullanıcı'}
-                        </span>
-                      </div>
-                      
-                      <div className="log-time">
-                        {formatDate(log.timestamp)}
-                      </div>
-                    </div>
-                    
-                    {/* Detaylar varsa göster */}
-                    {log.details && Object.keys(log.details).length > 0 && (
-                      <div className="log-extra-details">
-                        {log.details.quantityChange && (
-                          <span className="detail-item quantity-change">
-                            Toplam Stok: {log.details.quantityChange.from} → {log.details.quantityChange.to}
-                          </span>
-                        )}
-                        
-                        {log.details.variantChanges && (
-                          <div className="variant-changes">
-                            {/* Eklenen renkler */}
-                            {log.details.variantChanges.added && log.details.variantChanges.added.map((variant, index) => (
-                              <span key={`added-${index}`} className="detail-item variant-added">
-                                ➕ {variant.colorCode} {variant.colorName} ({variant.quantity} adet)
-                              </span>
-                            ))}
-                            
-                            {/* Değişen renkler */}
-                            {log.details.variantChanges.modified && log.details.variantChanges.modified.map((change, index) => (
-                              <span key={`modified-${index}`} className="detail-item variant-modified">
-                                ✏️ {change.colorCode} {change.colorName}: {change.oldQuantity} → {change.newQuantity}
-                              </span>
-                            ))}
-                            
-                            {/* Silinen renkler */}
-                            {log.details.variantChanges.removed && log.details.variantChanges.removed.map((variant, index) => (
-                              <span key={`removed-${index}`} className="detail-item variant-removed">
-                                🗑️ {variant.colorCode} {variant.colorName} ({variant.quantity} adet)
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {log.details.nameChanged && (
-                          <span className="detail-item name-changed">
-                            İsim değiştirildi: "{log.details.nameChanged.from}" → "{log.details.nameChanged.to}"
-                          </span>
-                        )}
-                        {log.details.brandChanged && (
-                          <span className="detail-item brand-changed">
-                            Marka değiştirildi: "{log.details.brandChanged.from}" → "{log.details.brandChanged.to}"
-                          </span>
-                        )}
-                        {log.details.categoryChanged && (
-                          <span className="detail-item category-changed">
-                            Kategori değiştirildi: "{log.details.categoryChanged.from}" → "{log.details.categoryChanged.to}"
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )}
+                rowProps={{
+                  logs: filteredLogs,
+                  renderLog: renderLogItem,
+                }}
+              />
             </div>
           )}
         </div>

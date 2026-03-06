@@ -29,7 +29,7 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
 
   const addVariant = () => {
     const reasonDefaults = perVariantReason
-      ? { stockReason: 'purchase', returnReason: '', returnDescription: '' }
+      ? { stockReason: '', returnReason: '', returnDescription: '' }
       : {};
     if (mode === 'quantity') {
       onChange([...variants, { colorCode: '', colorName: '', quantity: '', ...reasonDefaults }]);
@@ -54,10 +54,7 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
                 ...item,
                 delta: String(-currentQty),
                 isDeleting: true,
-                // Silme için varsayılan sebep: satış
-                stockReason: item.stockReason && ['sold', 'return_to_supplier'].includes(item.stockReason)
-                  ? item.stockReason
-                  : 'sold',
+                stockReason: '',
                 returnReason: '',
                 returnDescription: '',
               }
@@ -291,6 +288,8 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
  * delta < 0  → decrease modunda seçenekler (Ürün Satıldı / Firmaya İade)
  * delta === 0 → render edilmez (çağıran tarafından kontrol edilmeli)
  */
+const PLACEHOLDER_LABEL = 'Satın alım/satım nedenini seçiniz';
+
 export function InlineReasonSelector({ value, onChange, delta = 0, disabled = false }) {
   const { stockReason = '', returnReason = '', returnDescription = '' } = value || {};
   const mode = Number(delta) >= 0 ? 'increase' : 'decrease';
@@ -300,9 +299,7 @@ export function InlineReasonSelector({ value, onChange, delta = 0, disabled = fa
       ? [{ value: 'purchase', label: 'Satın Alım' }, { value: 'return', label: 'Ürün İade' }]
       : [{ value: 'sold', label: 'Ürün Satıldı' }, { value: 'return_to_supplier', label: 'Firmaya İade' }];
 
-  const effectiveReason = options.some((o) => o.value === stockReason)
-    ? stockReason
-    : options[0].value;
+  const effectiveReason = options.some((o) => o.value === stockReason) ? stockReason : '';
 
   const showReturnDetail =
     effectiveReason === 'return' || effectiveReason === 'return_to_supplier';
@@ -315,6 +312,7 @@ export function InlineReasonSelector({ value, onChange, delta = 0, disabled = fa
         disabled={disabled}
         className="inline-reason-select"
       >
+        <option value="">{PLACEHOLDER_LABEL}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -398,7 +396,7 @@ export function BrandInput({ value, onChange, brands = [], placeholder, disabled
         onChange={(e) => { onChange(e.target.value); updatePos(); }}
         onFocus={() => { updatePos(); setShow(true); }}
         onBlur={() => setShow(false)}
-        placeholder={placeholder || 'Örn: Özgür, Vivinza'}
+        placeholder={placeholder || 'Örn: Özgür Mobilya'}
         disabled={disabled}
         autoComplete="off"
       />
@@ -564,7 +562,7 @@ export function CategoryInput({ value, onChange, disabled = false }) {
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        placeholder="Kategori seçin..."
+        placeholder="Kategori Seçiniz"
         disabled={disabled || adding}
         autoComplete="off"
       />

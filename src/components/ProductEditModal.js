@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { createLog, LOG_ACTIONS } from '../utils/logging';
 import { buildUserRef } from '../utils/productService';
-import { BrandInput, CategoryInput } from './ProductFormFields';
+import { BrandInput, CategoryInput, VariantsEditor } from './ProductFormFields';
 import ConfirmDialog from './ConfirmDialog';
 import './ProductEditModal.css';
 
@@ -22,8 +22,34 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     description: product.description || ''
   });
 
-  // Varyant verileri
-  const [variants, setVariants] = useState(product.variants || []);
+  // Varyant verileri (delta formatı - Toplu Giriş ile aynı)
+  const buildDeltaVariants = (prod) => {
+    if (prod.variants && prod.variants.length > 0) {
+      return prod.variants.map((v) => ({
+        colorCode: v.colorCode || '',
+        colorName: v.colorName || '',
+        originalColorCode: v.colorCode || '',
+        originalColorName: v.colorName || '',
+        delta: '',
+        currentQty: v.quantity || 0,
+        stockReason: '',
+        returnReason: '',
+        returnDescription: '',
+      }));
+    }
+    return [{
+      colorCode: '',
+      colorName: '',
+      originalColorCode: '',
+      originalColorName: '',
+      delta: '',
+      currentQty: prod.quantity || 0,
+      stockReason: '',
+      returnReason: '',
+      returnDescription: '',
+    }];
+  };
+  const [deltaVariants, setDeltaVariants] = useState(() => buildDeltaVariants(product));
   
   // Orijinal stok miktarlarını takip et
   const [originalTotalQuantity, setOriginalTotalQuantity] = useState(0);
@@ -31,25 +57,30 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
   // Stok geçmişi görüntüleme
   const [showStockHistory, setShowStockHistory] = useState(false);
   
-  // Stok değişikliği modal'ı
-  const [showStockReasonModal, setShowStockReasonModal] = useState(false);
-  const [stockChangeType, setStockChangeType] = useState('');
-  const [stockChangeAmount, setStockChangeAmount] = useState('');
-  const [stockChangeReason, setStockChangeReason] = useState('');
-  const [stockChangeDescription, setStockChangeDescription] = useState('');
+  const [hasVariantConflicts, setHasVariantConflicts] = useState(false);
 
   // Kapatma uyarısı — kaydedilmemiş değişiklik varsa ConfirmDialog göster
   const [closeConfirm, setCloseConfirm] = useState(false);
+
+  const getCleanVariantsFromDelta = () =>
+    deltaVariants
+      .filter((v) => !v.isDeleting)
+      .map((v) => ({
+        colorCode: (v.colorCode || '').trim(),
+        colorName: (v.colorName || '').trim(),
+        quantity: (v.currentQty || 0) + (parseInt(v.delta) || 0),
+      }));
 
   const isFormDirty = () => {
     if (formData.name.trim() !== (product.name || '').trim()) return true;
     if (formData.brand.trim() !== (product.brand || '').trim()) return true;
     if (formData.category !== (product.category || '')) return true;
     if (formData.description.trim() !== (product.description || '').trim()) return true;
+    const clean = getCleanVariantsFromDelta();
     const oldV = product.variants || [];
-    if (variants.length !== oldV.length) return true;
-    for (let i = 0; i < variants.length; i++) {
-      const v = variants[i];
+    if (clean.length !== oldV.length) return true;
+    for (let i = 0; i < clean.length; i++) {
+      const v = clean[i];
       const o = oldV[i] || {};
       if ((v.colorCode || '').trim() !== (o.colorCode || '').trim()) return true;
       if ((v.colorName || '').trim() !== (o.colorName || '').trim()) return true;
@@ -67,12 +98,13 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     }
   };
 
-  // Component mount olduğunda orijinal stok miktarını ayarla
+  // Ürün değiştiğinde state'leri sıfırla
   useEffect(() => {
     const initialTotal = (product.variants || []).reduce((total, variant) => {
       return total + (parseInt(variant.quantity) || 0);
     }, 0);
     setOriginalTotalQuantity(initialTotal);
+    setDeltaVariants(buildDeltaVariants(product));
   }, [product]);
 
   // Form input değişikliklerini handle et
@@ -84,36 +116,11 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     }));
   };
 
-  // Varyant değişikliklerini handle et
-  const handleVariantChange = (index, field, value) => {
-    setVariants(prev => prev.map((variant, i) => {
-      if (i === index) {
-        // Quantity alanı için negatif değer kontrolü
-        if (field === 'quantity') {
-          const numValue = parseInt(value) || 0;
-          return { ...variant, [field]: Math.max(0, numValue) };
-        }
-        return { ...variant, [field]: value };
-      }
-      return variant;
-    }));
-  };
-
-  const addVariant = () => {
-    setVariants(prev => [...prev, { colorCode: '', colorName: '', quantity: 0 }]);
-  };
-
-  const removeVariant = (index) => {
-    if (variants.length > 1) {
-      setVariants(prev => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  // Toplam adet hesaplama
+  // Toplam adet hesaplama (delta formatından)
   const getTotalQuantity = () => {
-    return variants.reduce((total, variant) => {
-      return total + (parseInt(variant.quantity) || 0);
-    }, 0);
+    return deltaVariants
+      .filter((v) => !v.isDeleting)
+      .reduce((total, v) => total + (v.currentQty || 0) + (parseInt(v.delta) || 0), 0);
   };
 
   // Stok değişikliği olup olmadığını kontrol et
@@ -122,12 +129,25 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     return currentTotal !== originalTotalQuantity;
   };
 
+  const REASON_LABELS = { purchase: 'Satın Alım', return: 'Ürün İade', sold: 'Satıldı', return_to_supplier: 'Firmaya İade' };
+
   // Stok geçmişi formatlama
   const getStockReasonText = (entry) => {
     let baseText = '';
     
-    // İade açıklamaları varsa göster
-    if (entry.type === 'increase' && entry.reason === 'return') {
+    // Per-variant sebepler (yeni format)
+    if (entry.reason === 'per_variant' && entry.variantChanges?.length > 0) {
+      const parts = entry.variantChanges
+        .filter((v) => v.quantityChange !== 0)
+        .map((v) => {
+          const colorInfo = [v.colorCode, v.colorName].filter(Boolean).join(' - ') || 'Renksiz';
+          const reasonLabel = REASON_LABELS[v.stockReason] || v.stockReason;
+          return `${colorInfo}: ${reasonLabel}`;
+        });
+      if (parts.length > 0) baseText = parts.join('\n');
+    }
+    // Eski format: tek sebep
+    else if (entry.type === 'increase' && entry.reason === 'return') {
       if (entry.returnReason === 'wrong_product') baseText = 'Yanlış Ürün';
       else if (entry.returnReason === 'damaged') baseText = 'Bozuk Ürün';
       else if (entry.returnReason === 'other') baseText = 'Diğer';
@@ -137,6 +157,8 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       else if (entry.returnReason === 'damaged') baseText = 'Bozuk Ürün';
       else if (entry.returnReason === 'other') baseText = 'Diğer';
       if (entry.returnDescription) baseText += `: ${entry.returnDescription}`;
+    } else if (entry.reason && entry.reason !== 'per_variant') {
+      baseText = REASON_LABELS[entry.reason] || entry.reason;
     }
     
     // Toplam kalan ürün göster
@@ -185,55 +207,41 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     return baseText;
   };
 
-  // Stok nedeni modal'ı doğrulama
-  const validateStockReason = () => {
-    if (!stockChangeReason) {
-      setError('Stok değişikliği sebebi seçmelisiniz');
-      return false;
-    }
-
-    if ((stockChangeType === 'increase' && stockChangeReason === 'return') ||
-        (stockChangeType === 'decrease' && stockChangeReason === 'return_to_supplier')) {
-      if (!stockChangeDescription.trim()) {
-        setError('İade açıklaması girilmelidir');
+  // Per-variant stok sebebi doğrulama (Toplu Giriş ile aynı mantık)
+  const validatePerVariantReasons = () => {
+    const validIncrease = ['purchase', 'return'];
+    const validDecrease = ['sold', 'return_to_supplier'];
+    for (let i = 0; i < deltaVariants.length; i++) {
+      const v = deltaVariants[i];
+      const delta = parseInt(v.delta) || 0;
+      if (delta === 0) continue;
+      const mode = delta > 0 ? 'increase' : 'decrease';
+      const validReasons = mode === 'increase' ? validIncrease : validDecrease;
+      if (!validReasons.includes(v.stockReason)) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için stok sebebi seçilmelidir.`);
+        return false;
+      }
+      const needsReturn = v.stockReason === 'return' || v.stockReason === 'return_to_supplier';
+      if (needsReturn && !v.returnReason) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için iade sebebi seçilmelidir.`);
+        return false;
+      }
+      if (needsReturn && v.returnReason === 'other' && !(v.returnDescription || '').trim()) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için iade açıklaması girilmelidir.`);
         return false;
       }
     }
-
     return true;
-  };
-
-  // Stok nedeni seçimini kaydet ve asıl kaydetme işlemini yap
-  const handleStockReasonSubmit = async () => {
-    if (!validateStockReason()) return;
-
-    try {
-      setLoading(true);
-      await performActualSave();
-      
-      // Modal'ı kapat
-      setShowStockReasonModal(false);
-      setStockChangeReason('');
-      setStockChangeDescription('');
-      
-    } catch (error) {
-      console.error('Kaydetme hatası:', error);
-      setError('Kaydetme işlemi sırasında hata oluştu');
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Asıl kaydetme işlemi
   const performActualSave = async () => {
     const productRef = ref(db, `products/${product.id}`);
     
-    // Temizlenmiş varyantları hazırla
-    const cleanVariants = variants.map(variant => ({
-      colorCode: variant.colorCode.trim(),
-      colorName: variant.colorName.trim(),
-      quantity: parseInt(variant.quantity) || 0
-    }));
+    const cleanVariants = getCleanVariantsFromDelta();
     
     // Değişiklikleri tespit et
     const oldTotalQuantity = originalTotalQuantity;
@@ -257,49 +265,37 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       lastUpdated: new Date().toISOString()
     };
     
-    // Stok geçmişi güncellemesi (eğer stok değişmişse)
+    // Stok geçmişi güncellemesi (eğer stok değişmişse) — per-variant sebepler
     if (hasStockChanged()) {
-      // Varyant değişikliklerini analiz et
-      const changedVariants = [];
-      const oldVariants = product.variants || [];
-      
-      cleanVariants.forEach((newVariant, index) => {
-        const oldVariant = oldVariants[index];
-        if (oldVariant && oldVariant.quantity !== newVariant.quantity) {
-          const quantityDiff = newVariant.quantity - oldVariant.quantity;
-          if (quantityDiff !== 0) {
-            changedVariants.push({
-              colorCode: newVariant.colorCode || '',
-              colorName: newVariant.colorName || '',
-              quantityChange: quantityDiff,
-              oldQuantity: oldVariant.quantity,
-              newQuantity: newVariant.quantity
-            });
-          }
-        }
-      });
+      const changedVariants = deltaVariants
+        .filter((v) => !v.isDeleting && (parseInt(v.delta) || 0) !== 0)
+        .map((v) => {
+          const d = parseInt(v.delta) || 0;
+          const oldQty = v.currentQty || 0;
+          const newQty = oldQty + d;
+          const entry = {
+            colorCode: v.colorCode || '',
+            colorName: v.colorName || '',
+            quantityChange: d,
+            oldQuantity: oldQty,
+            newQuantity: newQty,
+            stockReason: v.stockReason || null,
+            returnReason: v.returnReason || null,
+            returnDescription: v.returnDescription || null,
+          };
+          return entry;
+        });
 
       const stockEntry = {
         date: new Date().toISOString(),
-        type: stockChangeType,
-        reason: stockChangeReason,
+        type: newTotalQuantity >= oldTotalQuantity ? 'increase' : 'decrease',
+        reason: 'per_variant',
         quantity: Math.abs(newTotalQuantity - oldTotalQuantity),
-        remainingStock: newTotalQuantity, // İşlem sonrası kalan stok
-        variantChanges: changedVariants, // Hangi varyantlardan değişiklik oldu
+        remainingStock: newTotalQuantity,
+        variantChanges: changedVariants,
         user: buildUserRef(currentUser),
       };
 
-      // Sebep açıklamaları
-      if ((stockChangeType === 'increase' && stockChangeReason === 'return') ||
-          (stockChangeType === 'decrease' && stockChangeReason === 'return_to_supplier')) {
-        const reasonParts = stockChangeDescription.split(':');
-        stockEntry.returnReason = reasonParts[0]?.trim();
-        if (reasonParts[1]) {
-          stockEntry.returnDescription = reasonParts[1]?.trim();
-        }
-      }
-
-      // Stok geçmişini güncelle
       const currentHistory = product.stockHistory || [];
       updateData.stockHistory = [...currentHistory, stockEntry];
     }
@@ -314,9 +310,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     if (oldTotalQuantity !== newTotalQuantity) {
       logDetails.quantityChange = { from: oldTotalQuantity, to: newTotalQuantity };
       if (hasStockChanged()) {
-        logDetails.stockChangeType = stockChangeType;
-        logDetails.stockChangeReason = stockChangeReason;
-        logDetails.stockChangeDescription = stockChangeDescription;
+        logDetails.stockChangeType = 'per_variant';
       }
     }
     if (nameChanged) {
@@ -370,7 +364,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       setError('Kategori seçimi zorunludur');
       return false;
     }
-    if (variants.length === 0) {
+    if (deltaVariants.filter((v) => !v.isDeleting).length === 0) {
       setError('En az bir renk çeşidi eklemelisiniz');
       return false;
     }
@@ -386,19 +380,16 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     if (!validateForm()) {
       return;
     }
-
-    // Stok değişikliği kontrolü
-    if (hasStockChanged()) {
-      const currentTotal = getTotalQuantity();
-      const changeAmount = currentTotal - originalTotalQuantity;
-      
-      setStockChangeType(changeAmount > 0 ? 'increase' : 'decrease');
-      setStockChangeAmount(Math.abs(changeAmount).toString());
-      setShowStockReasonModal(true);
+    if (hasVariantConflicts) {
+      setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez.');
       return;
     }
 
-    // Stok değişikliği yoksa direkt kaydet
+    // Stok değişikliği varsa per-variant sebep doğrulaması
+    if (hasStockChanged() && !validatePerVariantReasons()) {
+      return;
+    }
+
     try {
       setLoading(true);
       await performActualSave();
@@ -666,86 +657,15 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
             )}
           </div>
 
-          {/* Renk Çeşitleri */}
-          <div className="edit-variants-section">
-            <div className="edit-variants-header">
-              <label>Renk Çeşitleri *</label>
-              <span className="edit-total-quantity">Toplam: {getTotalQuantity()} adet</span>
-            </div>
-            
-            <div className="edit-variants-list">
-              {variants.map((variant, index) => (
-                <div key={index} className="edit-variant-row">
-                  <div className="edit-variant-inputs">
-                    <input
-                      type="text"
-                      placeholder="Renk kodu (isteğe bağlı)"
-                      value={variant.colorCode}
-                      onChange={(e) => handleVariantChange(index, 'colorCode', e.target.value)}
-                      disabled={loading}
-                      className="edit-color-code-input"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Renk adı (isteğe bağlı)"
-                      value={variant.colorName}
-                      onChange={(e) => handleVariantChange(index, 'colorName', e.target.value)}
-                      disabled={loading}
-                      className="edit-color-name-input"
-                    />
-                    <div className="edit-quantity-container">
-                      <button
-                        type="button"
-                        onClick={() => handleVariantChange(index, 'quantity', Math.max(0, (parseInt(variant.quantity) || 0) - 1))}
-                        disabled={loading || (parseInt(variant.quantity) || 0) === 0}
-                        className="edit-quantity-btn minus"
-                        title="Azalt (-1)"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Adet"
-                        value={variant.quantity}
-                        onChange={(e) => handleVariantChange(index, 'quantity', e.target.value)}
-                        disabled={loading}
-                        className="edit-quantity-input"
-                        style={{ textAlign: 'center' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleVariantChange(index, 'quantity', (parseInt(variant.quantity) || 0) + 1)}
-                        disabled={loading}
-                        className="edit-quantity-btn plus"
-                        title="Artır (+1)"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeVariant(index)}
-                    disabled={loading || variants.length === 1}
-                    className="edit-remove-variant-btn"
-                    title="Bu rengi sil"
-                  >
-                    Sil
-                  </button>
-                </div>
-              ))}
-            </div>
-            
-            <button
-              type="button"
-              onClick={addVariant}
-              disabled={loading}
-              className="edit-add-variant-btn"
-            >
-              + Yeni Renk Ekle
-            </button>
-          </div>
+          {/* Renk Çeşitleri — Toplu Giriş ile aynı delta modu + per-variant sebep */}
+          <VariantsEditor
+            variants={deltaVariants}
+            onChange={setDeltaVariants}
+            mode="delta"
+            disabled={loading}
+            onConflictsChange={setHasVariantConflicts}
+            perVariantReason
+          />
 
           <div className="edit-form-actions">
             <button 
@@ -789,140 +709,6 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
         />
       )}
 
-      {/* Stok Nedeni Modal'ı */}
-      {showStockReasonModal && (
-        <div 
-          className="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowStockReasonModal(false);
-              setStockChangeReason('');
-              setStockChangeDescription('');
-              setError('');
-            }
-          }}
-        >
-          <div className="modal-content stock-reason-modal">
-            <div className="modal-header">
-              <h3>Stok Değişikliği Sebebi</h3>
-              <button 
-                type="button" 
-                onClick={() => {
-                  setShowStockReasonModal(false);
-                  setStockChangeReason('');
-                  setStockChangeDescription('');
-                  setError('');
-                }}
-                className="modal-close-btn"
-                disabled={loading}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="stock-change-info">
-                <p>
-                  <strong>Stok Değişikliği:</strong> {stockChangeAmount} adet{' '}
-                  {stockChangeType === 'increase' ? 'artış' : 'azalış'}
-                </p>
-                <p>
-                  <strong>Orijinal Stok:</strong> {originalTotalQuantity} adet
-                </p>
-                <p>
-                  <strong>Yeni Stok:</strong> {getTotalQuantity()} adet
-                </p>
-              </div>
-
-              <div className="stock-reason-form">
-                <div className="form-group">
-                  <label>Stok Değişikliği Sebebi *</label>
-                  <select
-                    value={stockChangeReason}
-                    onChange={(e) => setStockChangeReason(e.target.value)}
-                    disabled={loading}
-                  >
-                    <option value="">Seçiniz...</option>
-                    {stockChangeType === 'increase' ? (
-                      <>
-                        <option value="purchase">Satın Alım</option>
-                        <option value="return">Ürün İade</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="sold">Ürün Satıldı</option>
-                        <option value="return_to_supplier">Ürün Firmaya İade Edildi</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-
-                {/* İade açıklaması */}
-                {((stockChangeType === 'increase' && stockChangeReason === 'return') ||
-                  (stockChangeType === 'decrease' && stockChangeReason === 'return_to_supplier')) && (
-                  <div className="form-group">
-                    <label>İade Detayı *</label>
-                    <select
-                      value={stockChangeDescription.split(':')[0] || ''}
-                      onChange={(e) => {
-                        const reason = e.target.value;
-                        if (reason === 'other') {
-                          setStockChangeDescription('other:');
-                        } else {
-                          setStockChangeDescription(reason);
-                        }
-                      }}
-                      disabled={loading}
-                    >
-                      <option value="">Seçiniz...</option>
-                      <option value="wrong_product">Yanlış Ürün</option>
-                      <option value="damaged">Bozuk Ürün</option>
-                      <option value="other">Diğer</option>
-                    </select>
-                    
-                    {stockChangeDescription.startsWith('other:') && (
-                      <textarea
-                        value={stockChangeDescription.split(':')[1] || ''}
-                        onChange={(e) => setStockChangeDescription(`other:${e.target.value}`)}
-                        placeholder="Açıklama giriniz..."
-                        rows="3"
-                        disabled={loading}
-                        className="stock-description-textarea"
-                      />
-                    )}
-                  </div>
-                )}
-
-                {error && <div className="error-message">{error}</div>}
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button 
-                type="button" 
-                onClick={() => {
-                  setShowStockReasonModal(false);
-                  setStockChangeReason('');
-                  setStockChangeDescription('');
-                  setError('');
-                }}
-                className="btn-cancel"
-                disabled={loading}
-              >
-                İptal
-              </button>
-              <button 
-                type="button" 
-                onClick={handleStockReasonSubmit}
-                className="btn-primary"
-                disabled={loading}
-              >
-                {loading ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

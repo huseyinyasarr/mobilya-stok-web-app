@@ -336,6 +336,14 @@
   animation: fadeIn 0.3s ease;
 }
 
+.logs-list-virtual {
+  overflow: hidden;
+}
+
+.log-virtual-row {
+  overflow: hidden;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

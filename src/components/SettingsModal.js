@@ -15,6 +15,12 @@ const SETTINGS_ITEMS = [
     desc: 'Kategori adı ve ikonlarını düzenle, yeni ekle',
   },
   {
+    id: 'products',
+    icon: '📦',
+    title: 'Ürünler',
+    desc: 'Toplu ürün silme ve ürün yönetimi',
+  },
+  {
     id: 'logout',
     icon: '⏻',
     title: 'Çıkış Yap',
@@ -23,11 +29,12 @@ const SETTINGS_ITEMS = [
   },
 ];
 
-export default function SettingsModal({ onClose, onOpenLogs, onOpenCategories, onLogout, user }) {
+export default function SettingsModal({ onClose, onOpenLogs, onOpenCategories, onOpenProducts, onLogout, user }) {
   const handleItem = (id) => {
     onClose();
     if (id === 'logs') onOpenLogs();
     if (id === 'categories') onOpenCategories();
+    if (id === 'products') onOpenProducts?.();
     if (id === 'logout') onLogout();
   };
 
