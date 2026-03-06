@@ -230,9 +230,9 @@
 
 /* ---- Delta Modu — edit-* Override'ları ---- */
 
-/* Delta modda tüm satırlar: renk kodu + renk adı + miktar (+ isteğe bağlı mevcut adet) */
+/* Delta modda tüm satırlar: varyans + renk kodu + renk adı + miktar (+ isteğe bağlı mevcut adet) */
 .edit-variant-row--delta .edit-variant-inputs {
-  grid-template-columns: 1fr 1fr 1.4fr;
+  grid-template-columns: 1fr 1fr 1fr minmax(110px, 1.2fr);
   align-items: center;
 }
 

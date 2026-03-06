@@ -259,7 +259,7 @@ function ReportPage() {
                       {p.variants && p.variants.length > 0 && (
                         <div className="report-detail-variants">
                           {p.variants.map((v, i) => {
-                            const colorInfo = [v.colorCode, v.colorName].filter(Boolean).join(' — ');
+                            const colorInfo = [v.colorCode, v.colorName, v.varyans].filter(Boolean).join(' — ');
                             if (!colorInfo) return null;
                             return (
                               <span key={i} className="report-detail-variant">

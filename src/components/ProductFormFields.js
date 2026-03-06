@@ -32,9 +32,9 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
       ? { stockReason: '', returnReason: '', returnDescription: '' }
       : {};
     if (mode === 'quantity') {
-      onChange([...variants, { colorCode: '', colorName: '', quantity: '', ...reasonDefaults }]);
+      onChange([...variants, { colorCode: '', colorName: '', varyans: '', quantity: '', ...reasonDefaults }]);
     } else {
-      onChange([...variants, { colorCode: '', colorName: '', currentQty: null, delta: '', isNew: true, ...reasonDefaults }]);
+      onChange([...variants, { colorCode: '', colorName: '', varyans: '', currentQty: null, delta: '', isNew: true, ...reasonDefaults }]);
     }
   };
 
@@ -128,7 +128,7 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
   const intraConflicts = useMemo(
     () => detectIntraVariantConflicts(variants),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(variants.map((v) => ({ c: v.colorCode, n: v.colorName })))]
+    [JSON.stringify(variants.map((v) => ({ c: v.colorCode, n: v.colorName, v: v.varyans })))]
   );
   const conflictIndices = useMemo(
     () => new Set(intraConflicts.flatMap((c) => c.indices)),
@@ -177,6 +177,14 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
                 className={`edit-variant-row${mode === 'delta' ? ' edit-variant-row--delta' : ''}${v.isNew ? ' edit-variant-row--new' : ''}${v.isDeleting ? ' edit-variant-row--deleting' : ''}${conflictIndices.has(idx) ? ' edit-variant-row--conflict' : ''}`}
               >
                 <div className="edit-variant-inputs">
+                  <input
+                    type="text"
+                    placeholder="Varyans (ölçü, boyut vb.)"
+                    value={v.varyans || ''}
+                    onChange={(e) => updateVariant(idx, 'varyans', e.target.value)}
+                    disabled={disabled}
+                    className="edit-varyans-input"
+                  />
                   <input
                     type="text"
                     placeholder="Renk kodu (isteğe bağlı)"

@@ -261,7 +261,8 @@
 
   .edit-variants-section .edit-variant-inputs input,
   .edit-variants-section .edit-color-code-input,
-  .edit-variants-section .edit-color-name-input {
+  .edit-variants-section .edit-color-name-input,
+  .edit-variants-section .edit-varyans-input {
     min-width: 0 !important;
     width: 100% !important;
     box-sizing: border-box;

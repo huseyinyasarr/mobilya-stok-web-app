@@ -24,8 +24,10 @@ const buildDeltaFromProduct = (product) => {
     return product.variants.map((v) => ({
       colorCode: v.colorCode || '',
       colorName: v.colorName || '',
+      varyans: v.varyans || '',
       originalColorCode: v.colorCode || '',
       originalColorName: v.colorName || '',
+      originalVaryans: v.varyans || '',
       delta: '',
       currentQty: v.quantity || 0,
       ...DEFAULT_REASON,
@@ -34,8 +36,10 @@ const buildDeltaFromProduct = (product) => {
   return [{
     colorCode: '',
     colorName: '',
+    varyans: '',
     originalColorCode: '',
     originalColorName: '',
+    originalVaryans: '',
     delta: '',
     currentQty: product.quantity || 0,
     ...DEFAULT_REASON,
@@ -65,10 +69,11 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
       return initialData.variants.map((v) => ({
         colorCode: v.colorCode ?? '',
         colorName: v.colorName ?? '',
+        varyans: v.varyans ?? '',
         quantity: v.quantity ?? '',
       }));
     }
-    return [{ colorCode: '', colorName: '', quantity: '' }];
+    return [{ colorCode: '', colorName: '', varyans: '', quantity: '' }];
   });
   const [stockReasonData, setStockReasonData] = useState({
     stockReason: initialData?.stockReason ?? 'purchase',
@@ -116,6 +121,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
       variants: variants.map((v) => ({
         colorCode: v.colorCode.trim(),
         colorName: v.colorName.trim(),
+        varyans: (v.varyans || '').trim(),
         quantity: parseInt(v.quantity) || 0,
       })),
     };
@@ -370,15 +376,18 @@ function StockUpdateForm({ cachedProducts, availableBrands = [], queue = [], onA
           const hasDelta = v.delta !== '' && parseInt(v.delta) !== 0;
           const colorChanged = !v.isNew && (
             (v.colorCode || '') !== (v.originalColorCode || '') ||
-            (v.colorName || '') !== (v.originalColorName || '')
+            (v.colorName || '') !== (v.originalColorName || '') ||
+            (v.varyans || '') !== (v.originalVaryans || '')
           );
           return hasDelta || colorChanged || (v.isNew && (parseInt(v.delta) || 0) > 0);
         })
         .map((v) => ({
           colorCode: v.colorCode,
           colorName: v.colorName,
+          varyans: (v.varyans || '').trim(),
           originalColorCode: v.isNew ? null : (v.originalColorCode ?? v.colorCode),
           originalColorName: v.isNew ? null : (v.originalColorName ?? v.colorName),
+          originalVaryans: v.isNew ? null : (v.originalVaryans ?? v.varyans ?? ''),
           delta: parseInt(v.delta) || 0,
           stockReason: v.stockReason || null,
           returnReason: v.returnReason || null,

@@ -28,8 +28,10 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       return prod.variants.map((v) => ({
         colorCode: v.colorCode || '',
         colorName: v.colorName || '',
+        varyans: v.varyans || '',
         originalColorCode: v.colorCode || '',
         originalColorName: v.colorName || '',
+        originalVaryans: v.varyans || '',
         delta: '',
         currentQty: v.quantity || 0,
         stockReason: '',
@@ -40,8 +42,10 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
     return [{
       colorCode: '',
       colorName: '',
+      varyans: '',
       originalColorCode: '',
       originalColorName: '',
+      originalVaryans: '',
       delta: '',
       currentQty: prod.quantity || 0,
       stockReason: '',
@@ -68,6 +72,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       .map((v) => ({
         colorCode: (v.colorCode || '').trim(),
         colorName: (v.colorName || '').trim(),
+        varyans: (v.varyans || '').trim(),
         quantity: (v.currentQty || 0) + (parseInt(v.delta) || 0),
       }));
 
@@ -84,6 +89,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       const o = oldV[i] || {};
       if ((v.colorCode || '').trim() !== (o.colorCode || '').trim()) return true;
       if ((v.colorName || '').trim() !== (o.colorName || '').trim()) return true;
+      if ((v.varyans || '').trim() !== (o.varyans || '').trim()) return true;
       if ((parseInt(v.quantity) || 0) !== (parseInt(o.quantity) || 0)) return true;
     }
     return false;
@@ -140,7 +146,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       const parts = entry.variantChanges
         .filter((v) => v.quantityChange !== 0)
         .map((v) => {
-          const colorInfo = [v.colorCode, v.colorName].filter(Boolean).join(' - ') || 'Renksiz';
+          const colorInfo = [v.colorCode, v.colorName, v.varyans].filter(Boolean).join(' - ') || 'Renksiz';
           const reasonLabel = REASON_LABELS[v.stockReason] || v.stockReason;
           return `${colorInfo}: ${reasonLabel}`;
         });
@@ -172,7 +178,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       const variantTexts = entry.variantChanges
         .filter(variant => variant.quantityChange !== 0)
         .map(variant => {
-          const colorInfo = [variant.colorCode, variant.colorName]
+          const colorInfo = [variant.colorCode, variant.colorName, variant.varyans]
             .filter(Boolean)
             .join(' - ');
           const colorDisplay = colorInfo || 'Renksiz';
@@ -190,7 +196,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       const islemYapilan = entry.variantChanges
         .filter(variant => variant.quantityChange !== 0)
         .map(variant => {
-          const colorInfo = [variant.colorCode, variant.colorName]
+          const colorInfo = [variant.colorCode, variant.colorName, variant.varyans]
             .filter(Boolean)
             .join(' - ');
           const colorDisplay = colorInfo || 'Renksiz';
@@ -276,6 +282,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
           const entry = {
             colorCode: v.colorCode || '',
             colorName: v.colorName || '',
+            varyans: (v.varyans || '').trim(),
             quantityChange: d,
             oldQuantity: oldQty,
             newQuantity: newQty,

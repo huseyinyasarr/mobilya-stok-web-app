@@ -722,9 +722,10 @@
 
 .edit-variant-inputs {
   display: grid;
-  grid-template-columns: 1.2fr 2fr 1.8fr;
-  gap: 15px;
+  grid-template-columns: 1fr 1fr 1.2fr minmax(110px, 1.2fr);
+  gap: 10px;
   flex: 1;
+  min-width: 0;
 }
 
 .edit-variant-inputs input {
@@ -741,14 +742,16 @@
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
 }
 
-/* Quantity Container with +/- buttons */
+/* Quantity Container with +/- buttons — kompakt, tam görünür */
 .edit-quantity-container {
   display: flex;
   align-items: center;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   background: white;
-  overflow: hidden;
+  overflow: visible;
+  min-width: 110px;
+  flex-shrink: 0;
 }
 
 .edit-quantity-container:focus-within {
@@ -759,13 +762,14 @@
 .edit-quantity-btn {
   background: #f9fafb;
   border: none;
-  padding: 8px 12px;
+  padding: 6px 8px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #374151;
   transition: all 0.2s ease;
-  min-width: 36px;
+  min-width: 28px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -790,17 +794,24 @@
 
 .edit-quantity-btn.minus {
   border-right: 1px solid #e5e7eb;
+  border-radius: 6px 0 0 6px;
+  flex-shrink: 0;
 }
 
 .edit-quantity-btn.plus {
   border-left: 1px solid #e5e7eb;
+  border-radius: 0 6px 6px 0;
+  flex-shrink: 0;
 }
 
 .edit-quantity-container .edit-quantity-input {
   border: none;
   flex: 1;
+  min-width: 36px;
+  width: 100%;
   text-align: center !important;
   font-weight: 500;
+  font-size: 14px;
   background: transparent;
   -webkit-appearance: none;
   -moz-appearance: textfield;

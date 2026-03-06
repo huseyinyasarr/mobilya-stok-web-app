@@ -4,6 +4,8 @@
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: visible;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .product-list-container h2 {
@@ -294,37 +296,29 @@
   line-height: 1.5;
 }
 
-/* Virtual list wrapper */
+/* Virtual list wrapper — sayfa scroll, sabit yükseklik yok */
 .product-list-virtual-wrapper {
   padding: 25px;
   background: #f8fafc;
-  min-height: 400px;
-}
-
-.products-list-virtual {
-  background: #f8fafc;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .virtual-list-row {
-  overflow: hidden;
-}
-
-.products-grid-virtual {
-  background: #f8fafc;
-}
-
-.virtual-grid-row .products-grid {
-  padding: 0;
-  animation: none;
-}
-
-.virtual-grid-cell {
-  padding-right: 6px;
-  padding-bottom: 6px;
+  padding: 2px 0;
   box-sizing: border-box;
 }
 
-/* Virtual grid/list - mobilde taşmayı önle */
+.virtual-grid-row {
+  box-sizing: border-box;
+}
+
+.virtual-grid-cell {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .virtual-grid-cell .product-card,
 .virtual-list-row .product-list-item {
   max-width: 100%;

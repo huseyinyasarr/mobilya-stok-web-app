@@ -1,14 +1,13 @@
-// Ürünleri listeleyen component
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { List, Grid } from 'react-window';
+// Ürünleri listeleyen component — sayfa scroll'u ile virtualization (@tanstack/react-virtual)
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import ProductEditModal from './ProductEditModal';
 import { scoreSearchTerms, formatRelativeDate } from '../utils/fuzzySearch';
 import './ProductList.css';
 
-// Virtualization sabitleri - sabit yükseklik = eşit boşluk
-const LIST_ITEM_HEIGHT = 130;
-const LIST_ITEM_GAP = 4;
-const GRID_ROW_HEIGHT = 175;
+// Virtualization sabitleri
+const LIST_ITEM_HEIGHT = 134;
+const GRID_ROW_HEIGHT = 185;
 const GRID_CARD_MIN_WIDTH = 320;
 const GRID_GAP = 10;
 const GRID_PADDING = 50;
@@ -19,13 +18,6 @@ function getStockStatus(quantity) {
   if (quantity === 0) return 'out-of-stock';
   if (quantity <= 5) return 'low-stock';
   return 'in-stock';
-}
-
-function hasColorInfo(variants) {
-  if (!variants || variants.length === 0) return false;
-  return variants.some(
-    (v) => (v.colorCode && v.colorCode.trim()) || (v.colorName && v.colorName.trim())
-  );
 }
 
 function formatDate(timestamp) {
@@ -124,26 +116,53 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
     return Math.ceil(finalProducts.length / gridColumnCount);
   }, [finalProducts.length, gridColumnCount]);
 
-  const [virtualListHeight, setVirtualListHeight] = useState(() =>
-    typeof window !== 'undefined' ? Math.max(400, window.innerHeight - 320) : 500
+  // Sayfa scroll'u için scroll margin (list container'ın doküman üstünden offset'i)
+  const [scrollMargin, setScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    const update = () => {
+      const el = listContainerRef.current;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setScrollMargin(rect.top + window.scrollY);
+      }
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    const ro = new ResizeObserver(update);
+    if (listContainerRef.current) ro.observe(listContainerRef.current);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      ro.disconnect();
+    };
+  }, [finalProducts.length]);
+
+  // Mobilde liste satırı daha yüksek
+  const [listRowHeight, setListRowHeight] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 240 : LIST_ITEM_HEIGHT
   );
   useEffect(() => {
-    const update = () => setVirtualListHeight(Math.max(400, window.innerHeight - 320));
+    const update = () => setListRowHeight(window.innerWidth < 768 ? 240 : LIST_ITEM_HEIGHT);
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Mobilde liste satırları daha yüksek (stacked layout) - sabit 130px üst üste binmeye neden oluyordu
-  const [listRowHeight, setListRowHeight] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth < 768 ? 240 : LIST_ITEM_HEIGHT + LIST_ITEM_GAP
-  );
-  useEffect(() => {
-    const update = () =>
-      setListRowHeight(window.innerWidth < 768 ? 240 : LIST_ITEM_HEIGHT + LIST_ITEM_GAP);
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+  // Liste görünümü — sayfa scroll ile virtualization
+  const listVirtualizer = useWindowVirtualizer({
+    count: finalProducts.length,
+    estimateSize: () => listRowHeight,
+    overscan: 5,
+    scrollMargin,
+  });
+
+  // Grid görünümü — satır bazlı virtualization (her satır N sütun)
+  const gridVirtualizer = useWindowVirtualizer({
+    count: gridRowCount,
+    estimateSize: () => GRID_ROW_HEIGHT + GRID_GAP,
+    overscan: 2,
+    scrollMargin,
+  });
 
   if (loading) {
     return (
@@ -226,18 +245,14 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
                 </div>
                 
                 <div className="list-variants-detail">
-                  {hasColorInfo(product.variants) && product.variants.map((variant, variantIndex) => {
+                  {product.variants.map((variant, variantIndex) => {
                     const currentQuantity = variant.quantity || 0;
-                    const showColorInfo = (variant.colorCode && variant.colorCode.trim()) || 
-                                         (variant.colorName && variant.colorName.trim());
-                    
+                    const colorPart = [variant.colorCode, variant.colorName].filter(Boolean).join(' - ') || null;
+                    const varyansPart = (variant.varyans || '').trim() || null;
+                    const displayLabel = [colorPart, varyansPart].filter(Boolean).join(' · ') || '—';
                     return (
                       <div key={variantIndex} className="list-variant-item">
-                        {showColorInfo && (
-                          <span className="list-variant-color">
-                            <strong>{variant.colorCode}</strong> - {variant.colorName}
-                          </span>
-                        )}
+                        <span className="list-variant-color">{displayLabel}</span>
                         <span className={`list-variant-quantity ${getStockStatus(currentQuantity)}`}>
                           {currentQuantity}
                         </span>
@@ -336,30 +351,24 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
               </span>
             </div>
             
-            {hasColorInfo(product.variants) && (
-              <div className="variants-list">
-                {product.variants.map((variant, variantIndex) => {
-                  const currentQuantity = variant.quantity || 0;
-                  const showColorInfo = (variant.colorCode && variant.colorCode.trim()) || 
-                                       (variant.colorName && variant.colorName.trim());
-                  
-                  return (
-                    <div key={variantIndex} className="variant-item">
-                      <div className="variant-info">
-                        {showColorInfo && (
-                          <span className="variant-color">
-                            <strong>{variant.colorCode}</strong> - {variant.colorName}
-                          </span>
-                        )}
-                        <span className={`quantity-value ${getStockStatus(currentQuantity)}`}>
+            <div className="variants-list">
+              {product.variants.map((variant, variantIndex) => {
+                const currentQuantity = variant.quantity || 0;
+                const colorPart = [variant.colorCode, variant.colorName].filter(Boolean).join(' - ') || null;
+                const varyansPart = (variant.varyans || '').trim() || null;
+                const displayLabel = [colorPart, varyansPart].filter(Boolean).join(' · ') || '—';
+                return (
+                  <div key={variantIndex} className="variant-item">
+                    <div className="variant-info">
+                      <span className="variant-color">{displayLabel}</span>
+                      <span className={`quantity-value ${getStockStatus(currentQuantity)}`}>
                           {currentQuantity}
                         </span>
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            )}
+            </div>
           </div>
         ) : (
           /* Eski sistem - backward compatibility */
@@ -413,47 +422,66 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
       
       <div ref={listContainerRef} className="product-list-virtual-wrapper">
         {viewMode === 'grid' ? (
-          <Grid
-            columnCount={gridColumnCount}
-            columnWidth={Math.max(200, (containerWidth - GRID_PADDING - (gridColumnCount - 1) * GRID_GAP) / gridColumnCount)}
-            rowCount={gridRowCount}
-            rowHeight={GRID_ROW_HEIGHT + GRID_GAP}
-            cellComponent={({ columnIndex, rowIndex, style, products, columnCount, renderItem }) => {
-              const index = rowIndex * columnCount + columnIndex;
-              const product = products[index];
-              if (!product) return null;
-              return (
-                <div style={style} className="virtual-grid-cell">
-                  {renderItem(product)}
+          <div
+            style={{
+              height: `${gridVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {gridVirtualizer.getVirtualItems().map((virtualRow) => (
+              <div
+                key={virtualRow.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start - gridVirtualizer.options.scrollMargin}px)`,
+                }}
+                className="virtual-grid-row"
+              >
+                <div className="products-grid products-grid-virtual" style={{ padding: 0, display: 'grid', gridTemplateColumns: `repeat(${gridColumnCount}, 1fr)`, gap: GRID_GAP }}>
+                  {Array.from({ length: gridColumnCount }).map((_, colIndex) => {
+                    const index = virtualRow.index * gridColumnCount + colIndex;
+                    const product = finalProducts[index];
+                    if (!product) return null;
+                    return (
+                      <div key={product.id} className="virtual-grid-cell">
+                        {renderGridItem(product)}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            }}
-            cellProps={{
-              products: finalProducts,
-              columnCount: gridColumnCount,
-              renderItem: renderGridItem,
-            }}
-            className="products-grid-virtual"
-            overscanCount={2}
-            style={{ height: virtualListHeight, width: '100%' }}
-          />
-        ) : (
-          <List
-            rowCount={finalProducts.length}
-            rowHeight={listRowHeight}
-            rowComponent={({ index, style, products, renderItem }) => (
-              <div style={style} className="virtual-list-row">
-                {renderItem(products[index])}
               </div>
-            )}
-            rowProps={{
-              products: finalProducts,
-              renderItem: renderListItem,
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              height: `${listVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
             }}
-            className="products-list-virtual"
-            overscanCount={3}
-            style={{ height: virtualListHeight, width: '100%' }}
-          />
+          >
+            {listVirtualizer.getVirtualItems().map((virtualRow) => (
+              <div
+                key={virtualRow.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start - listVirtualizer.options.scrollMargin}px)`,
+                }}
+                className="virtual-list-row"
+              >
+                {renderListItem(finalProducts[virtualRow.index])}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

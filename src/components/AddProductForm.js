@@ -135,7 +135,7 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
     description: '',
   });
   const [variants, setVariants] = useState([
-    { colorCode: '', colorName: '', quantity: '', stockReason: 'purchase', returnReason: '', returnDescription: '' },
+    { colorCode: '', colorName: '', varyans: '', quantity: '', stockReason: 'purchase', returnReason: '', returnDescription: '' },
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

@@ -2,20 +2,29 @@
 .dashboard {
   min-height: 100vh;
   background: #f8fafc;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 .dashboard-header {
   background: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1rem 0;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 100;
-  transition: all 0.3s ease;
+  transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-x: hidden;
+  -webkit-transform: translateZ(0); /* Mobil: GPU layer — scroll animasyonu akıcı */
 }
 
-/* Mobilde scroll edildiğinde kompakt header */
+/* Scroll edildiğinde kompakt header — masaüstü + mobil */
 .dashboard-header.scrolled {
   padding: 0.5rem 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -23,13 +32,16 @@
 
 .header-content {
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: all 0.3s ease;
+  transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              gap 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   gap: 15px;
+  box-sizing: border-box;
 }
 
 .header-left {
@@ -131,7 +143,7 @@
   color: #1a202c;
   font-size: 1.75rem;
   font-weight: 700;
-  transition: all 0.3s ease;
+  transition: font-size 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Scrolled durumunda başlık küçülür */
@@ -157,7 +169,12 @@
   cursor: pointer;
   font-weight: 500;
   font-size: 0.875rem;
-  transition: all 0.25s ease;
+  transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              font-size 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.2s ease, transform 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -168,7 +185,7 @@
 .bulk-entry-btn:hover { background: #d97706; transform: scale(1.04); }
 
 .btn-text {
-  transition: all 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 
 /* Scroll'da metin gizle, ikon küçüle */
@@ -199,7 +216,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              font-size 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.2s ease, transform 0.2s ease, color 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -217,10 +237,15 @@
 }
 
 /* ---- Dashboard Content ---- */
+/* Header fixed olduğu için içeriği aşağı itmek için padding-top */
 .dashboard-content {
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: 30px 20px;
+  padding-top: 86px; /* Navbar yüksekliği (padding + içerik) — fixed header için */
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* Kontrol Paneli */
@@ -233,12 +258,28 @@
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 30px;
-  transition: all 0.4s ease;
+  max-height: 300px;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateY(0);
   opacity: 1;
 }
 
 .controls.search-hidden {
+  transform: translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
+  margin-bottom: 0;
+  max-height: 0;
+  padding: 0 20px;
+  overflow: hidden;
+}
+
+/* Scroll'da controls gizlenir — yumuşak animasyon */
+.controls.scrolled-hidden {
   transform: translateY(-20px);
   opacity: 0;
   pointer-events: none;
@@ -370,15 +411,32 @@
   border-bottom-right-radius: 6px;
 }
 
-/* İstatistikler */
+/* İstatistikler — controls ile aynı genişlikte */
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
   margin-bottom: 30px;
-  transition: all 0.4s ease;
+  width: 100%;
+  max-width: 100%;
+  max-height: 1200px;
+  box-sizing: border-box;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateY(0);
   opacity: 1;
+}
+
+/* 4 kart kapalıyken: yan yana, toplam genişlik = controls */
+.stats.both-collapsed {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.stats .stat-card:first-child,
+.stats .stat-card:nth-child(2) {
+  grid-column: span 1;
 }
 
 .stats.search-hidden {
@@ -390,12 +448,23 @@
   overflow: hidden;
 }
 
+/* Scroll'da stats gizlenir — yumuşak animasyon */
+.stats.scrolled-hidden {
+  transform: translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
+  margin-bottom: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
 .stat-card {
   background: white;
-  padding: 20px;
+  padding: 16px;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  min-width: 0;
 }
 
 .stat-card:hover {
@@ -419,10 +488,27 @@
   display: block;
 }
 
-/* Kategori Detayları */
+/* Kategori ve Marka Detayları — açıkken 2 sütun */
 .categories-detail,
 .brands-detail {
   grid-column: span 2;
+}
+
+/* Kapalı hali: 4 kart eşit boyut, yan yana, controls genişliğini geçmez */
+.stat-card.categories-detail.collapsed,
+.stat-card.brands-detail.collapsed {
+  grid-column: span 1;
+  padding: 16px;
+}
+
+.stat-card.categories-detail.collapsed .category-header h3,
+.stat-card.brands-detail.collapsed .brand-header h3 {
+  margin: 0;
+}
+
+.stat-card.categories-detail.collapsed .toggle-icon,
+.stat-card.brands-detail.collapsed .toggle-icon {
+  font-size: 0.65rem;
 }
 
 .category-header,
@@ -547,12 +633,17 @@
   .header-content {
     flex-direction: column;
     gap: 8px;
-    padding: 0 15px;
+    padding: 0 12px;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   
   .header-left {
     order: 1;
     width: 100%;
+    min-width: 0;
     justify-content: flex-start;
     gap: 8px;
   }
@@ -561,13 +652,14 @@
     order: 2;
     width: 100%;
     max-width: none;
-    min-width: auto;
+    min-width: 0;
   }
   
   .user-info {
     order: 3;
-    width: auto;
-    align-self: flex-end;
+    width: 100%;
+    min-width: 0;
+    align-self: stretch;
     justify-content: flex-end;
     gap: 8px;
   }
@@ -635,49 +727,122 @@
     gap: 8px;
   }
 
+  /* Mobil: controls taşmayı önle, kaybolma animasyonu kısa ve akıcı */
   .controls {
     flex-direction: column;
     gap: 15px;
-    padding: 15px;
+    padding: 12px 15px;
+    max-height: 400px;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    transition: transform 0.2s ease-out,
+                opacity 0.2s ease-out,
+                max-height 0.22s ease-out,
+                margin 0.2s ease-out,
+                padding 0.2s ease-out;
   }
 
   .filters {
     flex-direction: column;
     gap: 10px;
     width: 100%;
+    min-width: 0;
   }
 
   .filter-group {
     width: 100%;
+    min-width: 0;
     justify-content: space-between;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+  }
+
+  .filter-group label {
+    flex-shrink: 0;
+  }
+
+  .filter-group select,
+  .category-select,
+  .brand-select,
+  .sort-select {
+    min-width: 0;
+    flex: 1;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .add-product-btn {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .view-toggle-group {
     order: -1;
   }
 
-  .stats {
-    gap: 15px;
-    grid-template-columns: 1fr;
+  /* Mobil: 4 stat kartı 2x2, kaybolma animasyonu kısa ve akıcı */
+  .stats,
+  .stats.both-collapsed {
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    max-height: 1400px;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    transition: transform 0.2s ease-out,
+                opacity 0.2s ease-out,
+                max-height 0.22s ease-out,
+                margin 0.2s ease-out;
   }
 
-  .categories-detail,
-  .brands-detail {
+  .stats .stat-card:first-child,
+  .stats .stat-card:nth-child(2),
+  .stats .stat-card.categories-detail,
+  .stats .stat-card.brands-detail {
     grid-column: span 1;
+  }
+
+  .stat-card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* Mobil: scrolled-hidden padding — taşmayı önler */
+  .controls.scrolled-hidden {
+    padding: 0 15px;
   }
 
   .dashboard-content {
     padding: 20px 15px;
-  }
-
-  .dashboard-header.scrolled + .dashboard-content {
-    padding-top: 15px;
+    padding-top: 86px; /* Fixed navbar için — mobilde de üst boşluk */
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
 @media (max-width: 480px) {
   .header-content {
     padding: 0 10px;
+  }
+
+  .dashboard-content {
+    padding: 15px 10px;
+    padding-top: 86px; /* Fixed navbar için */
+  }
+
+  .controls {
+    padding: 10px 12px;
+  }
+
+  .stats {
+    gap: 10px;
   }
 
   .header-search {

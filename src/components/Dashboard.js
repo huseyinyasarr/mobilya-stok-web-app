@@ -27,7 +27,8 @@ function Dashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCategoryDetails, setShowCategoryDetails] = useState(false);
   const [showBrandDetails, setShowBrandDetails] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);  // Navbar küçülme (düşük eşik)
+  const [isScrolled, setIsScrolled] = useState(false);              // Controls/stats gizleme (yüksek eşik)
   const [showCategorySelection, setShowCategorySelection] = useState(true); // Kategori seçim ekranını kontrol eder
   const [showActivityLogs, setShowActivityLogs] = useState(false);
   const [showBulkEntry, setShowBulkEntry] = useState(false);
@@ -38,15 +39,50 @@ function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('alphabetical');
 
-  // Scroll durumunu takip et
+  // Scroll durumunu takip et — iki ayrı eşik:
+  // 1) Navbar küçülme: az kaydırmada — mobilde 30px, masaüstünde 50px
+  // 2) Controls/stats gizleme: daha fazla kaydırmada (hysteresis ile)
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      setIsScrolled(scrollTop > 50);
+    const HEADER_SHRINK = 50;    // Masaüstü: navbar küçülme (px)
+    const HEADER_SHRINK_MOBILE = 30;  // Mobil: navbar hemen küçülsün
+    const HEADER_EXPAND = 25;
+    const HEADER_EXPAND_MOBILE = 20;
+    const HIDE_THRESHOLD = 120;
+    const SHOW_THRESHOLD = 60;
+    const MOBILE_HIDE = 200;
+    const MOBILE_SHOW = 120;
+
+    const update = () => {
+      const scrollTop = window.scrollY ?? window.pageYOffset ?? document.documentElement?.scrollTop ?? 0;
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const hideAt = isMobile ? MOBILE_HIDE : HIDE_THRESHOLD;
+      const showAt = isMobile ? MOBILE_SHOW : SHOW_THRESHOLD;
+      const shrinkAt = isMobile ? HEADER_SHRINK_MOBILE : HEADER_SHRINK;
+      const expandAt = isMobile ? HEADER_EXPAND_MOBILE : HEADER_EXPAND;
+
+      // Navbar küçülme — mobilde daha erken tetiklenir
+      setIsHeaderScrolled((prev) => {
+        if (scrollTop > shrinkAt) return true;
+        if (scrollTop < expandAt) return false;
+        return prev;
+      });
+
+      // Controls/stats gizleme
+      setIsScrolled((prev) => {
+        if (scrollTop > hideAt) return true;
+        if (scrollTop < showAt) return false;
+        return prev;
+      });
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => requestAnimationFrame(update);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', update);
+    };
   }, []);
 
   // Mobilde her zaman liste görünümü kullan
@@ -145,7 +181,7 @@ function Dashboard() {
   return (
     <div className="dashboard">
       {/* Header */}
-      <header className={`dashboard-header ${isScrolled ? 'scrolled' : ''}`}>
+      <header className={`dashboard-header ${isHeaderScrolled ? 'scrolled' : ''}`}>
         <div className="header-content">
           <div className="header-left">
             {!showCategorySelection && (
@@ -225,8 +261,8 @@ function Dashboard() {
           />
         ) : (
           <>
-            {/* Kontrol Paneli - Arama yaparken gizle */}
-            <div className={`controls ${searchQuery ? 'search-hidden' : ''}`}>
+            {/* Kontrol Paneli - Arama yaparken veya scroll'da gizle */}
+            <div className={`controls ${searchQuery ? 'search-hidden' : ''} ${isScrolled ? 'scrolled-hidden' : ''}`}>
                 <div className="filters">
                   <div className="filter-group">
                     <label htmlFor="category-filter">Kategori:</label>
@@ -285,8 +321,8 @@ function Dashboard() {
                 </button>
               </div>
 
-            {/* İstatistikler - Arama yaparken gizle */}
-            <div className={`stats ${searchQuery ? 'search-hidden' : ''}`}>
+            {/* İstatistikler - Arama yaparken veya scroll'da gizle */}
+            <div className={`stats ${searchQuery ? 'search-hidden' : ''} ${isScrolled ? 'scrolled-hidden' : ''} ${!showCategoryDetails && !showBrandDetails ? 'both-collapsed' : ''}`}>
               <div className="stat-card">
                 <h3>Toplam Ürün Sayısı</h3>
                 <span className="stat-number">
@@ -304,7 +340,7 @@ function Dashboard() {
                 <h3>Kaç Kalem Ürün Var</h3>
                 <span className="stat-number">{products.length}</span>
               </div>
-              <div className="stat-card categories-detail">
+              <div className={`stat-card categories-detail ${!showCategoryDetails ? 'collapsed' : ''}`}>
                 <div 
                   className="category-header" 
                   onClick={() => setShowCategoryDetails(!showCategoryDetails)}
@@ -348,7 +384,7 @@ function Dashboard() {
                 )}
               </div>
               
-              <div className="stat-card brands-detail">
+              <div className={`stat-card brands-detail ${!showBrandDetails ? 'collapsed' : ''}`}>
                 <div 
                   className="brand-header" 
                   onClick={() => setShowBrandDetails(!showBrandDetails)}
