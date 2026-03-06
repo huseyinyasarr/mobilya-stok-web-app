@@ -84,3 +84,132 @@
   flex-shrink: 0;
   color: #667eea;
 }
+
+/* ===== edit-variant-group — Varyant satırı + stok sebebi grubu ===== */
+
+.edit-variant-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reason selector görünürken üstteki satırın alt köşeleri kare kalır */
+.edit-variant-group.has-reason .edit-variant-row {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: #e2e8f0;
+}
+
+/* ===== InlineReasonSelector — Varyant başına stok sebebi seçici ===== */
+
+.inline-reason-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f8faff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.inline-reason-select {
+  flex: 1 1 140px;
+  min-width: 120px;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.inline-reason-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.inline-reason-desc {
+  flex: 2 1 180px;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  color: #374151;
+}
+
+.inline-reason-desc:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* ===== edit-variant-row--deleting — Silinmek üzere işaretlenmiş varyant ===== */
+
+.edit-variant-row--deleting {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.edit-variant-row--deleting .edit-variant-inputs input,
+.edit-variant-row--deleting .edit-color-code-input,
+.edit-variant-row--deleting .edit-color-name-input {
+  color: #ef4444;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.edit-remove-variant-btn--undo {
+  color: #6366f1;
+  border-color: #a5b4fc;
+  background: #eef2ff;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.edit-remove-variant-btn--undo:hover {
+  background: #e0e7ff;
+}
+
+/* ===== VariantsEditor — Form içi çakışma uyarıları ===== */
+
+.edit-variant-row--conflict {
+  border: 1.5px solid #f59e0b;
+  border-radius: 10px;
+  background: #fffbeb;
+  padding: 4px 4px 4px 8px;
+}
+
+.edit-variants-conflict-summary {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-variant-conflict-msg {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.edit-variant-conflict-msg--duplicate {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.edit-variant-conflict-msg--code_name_mismatch {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.edit-variant-conflict-msg--name_only_code_asymmetry {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}

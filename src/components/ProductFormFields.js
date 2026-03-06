@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useCategories } from '../contexts/CategoriesContext';
+import { detectIntraVariantConflicts } from '../utils/productService';
 import './ProductFormFields.css';
 
 export const CATEGORIES = [
@@ -16,49 +17,169 @@ export const CATEGORIES = [
 /**
  * VariantsEditor — Paylaşılan varyant editörü
  *
- * mode='quantity'  → Yeni ürün: renk alanları düzenlenebilir, değer ≥ 0
- * mode='delta'     → Stok güncelleme: renk alanları salt-okunur, değer +/−
+ * mode='quantity'      → Yeni ürün: renk alanları düzenlenebilir, değer ≥ 0
+ * mode='delta'         → Stok güncelleme: mevcut renkler salt-okunur, delta +/−
+ *                         isNew:true olan satırlar düzenlenebilir (yeni renk ekleme)
+ *
+ * onEditProductInfo    → Delta modda header'da kalem butonu gösterir; tıklanınca çağrılır
  */
-export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled = false }) {
-  const valueField = mode === 'quantity' ? 'quantity' : 'delta';
-
+export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled = false, onEditProductInfo = null, onConflictsChange = null, perVariantReason = false }) {
   const updateVariant = (idx, field, val) =>
     onChange(variants.map((v, i) => (i === idx ? { ...v, [field]: val } : v)));
 
-  const addVariant = () =>
-    onChange([...variants, { colorCode: '', colorName: '', quantity: '' }]);
+  const addVariant = () => {
+    const reasonDefaults = perVariantReason
+      ? { stockReason: 'purchase', returnReason: '', returnDescription: '' }
+      : {};
+    if (mode === 'quantity') {
+      onChange([...variants, { colorCode: '', colorName: '', quantity: '', ...reasonDefaults }]);
+    } else {
+      onChange([...variants, { colorCode: '', colorName: '', currentQty: null, delta: '', isNew: true, ...reasonDefaults }]);
+    }
+  };
 
-  const removeVariant = (idx) =>
+  const updateReason = (idx, reasonVal) =>
+    onChange(variants.map((v, i) => (i === idx ? { ...v, ...reasonVal } : v)));
+
+  const removeVariant = (idx) => {
+    const v = variants[idx];
+    // Delta modda mevcut (yeni olmayan) varyantı sil → delta'yı -currentQty yap
+    // Böylece stok sebebi seçilebilir ve işlem kuyruğa eklenebilir
+    if (mode === 'delta' && !v.isNew) {
+      const currentQty = v.currentQty || 0;
+      if (currentQty > 0) {
+        onChange(variants.map((item, i) =>
+          i === idx
+            ? {
+                ...item,
+                delta: String(-currentQty),
+                isDeleting: true,
+                // Silme için varsayılan sebep: satış
+                stockReason: item.stockReason && ['sold', 'return_to_supplier'].includes(item.stockReason)
+                  ? item.stockReason
+                  : 'sold',
+                returnReason: '',
+                returnDescription: '',
+              }
+            : item
+        ));
+        return;
+      }
+      // currentQty = 0 ise direkt sil (stokta hiçbir şey yok)
+    }
     onChange(variants.filter((_, i) => i !== idx));
+  };
 
-  const total = variants.reduce((sum, v) => sum + (parseInt(v[valueField]) || 0), 0);
+  // Silme işlemini geri al — delta'yı sıfırla
+  const undoDelete = (idx) =>
+    onChange(variants.map((v, i) =>
+      i === idx ? { ...v, delta: '', isDeleting: false } : v
+    ));
 
-  const totalBadgeClass = mode === 'delta'
-    ? `edit-total-quantity${total > 0 ? ' delta-positive' : total < 0 ? ' delta-negative' : ''}`
-    : 'edit-total-quantity';
+  // Delta modda: mevcut stok + delta = gösterilen değer
+  const getDisplayVal = (v) => {
+    if (mode !== 'delta' || v.isNew) return v[mode === 'quantity' ? 'quantity' : 'delta'];
+    const base = v.currentQty || 0;
+    const d = parseInt(v.delta) || 0;
+    return String(base + d);
+  };
 
-  const totalLabel = mode === 'quantity'
-    ? `Toplam: ${total} adet`
-    : `${total > 0 ? '+' : ''}${total} adet`;
+  // Delta modda input değiştiğinde: delta = yeniGösterilen - currentQty
+  const handleDisplayChange = (idx, rawVal, v) => {
+    if (mode === 'quantity') { updateVariant(idx, 'quantity', rawVal); return; }
+    if (v.isNew) { updateVariant(idx, 'delta', rawVal); return; }
+    if (rawVal === '') { updateVariant(idx, 'delta', ''); return; }
+    const parsed = parseInt(rawVal);
+    if (!isNaN(parsed)) {
+      updateVariant(idx, 'delta', String(Math.max(0, parsed) - (v.currentQty || 0)));
+    }
+  };
+
+  const handleMinus = (idx, v) => {
+    if (mode === 'quantity') {
+      updateVariant(idx, 'quantity', Math.max(0, (parseInt(v.quantity) || 0) - 1));
+    } else if (v.isNew) {
+      updateVariant(idx, 'delta', Math.max(0, (parseInt(v.delta) || 0) - 1));
+    } else {
+      const cur = (v.currentQty || 0) + (parseInt(v.delta) || 0);
+      const next = Math.max(0, cur - 1);
+      updateVariant(idx, 'delta', String(next - (v.currentQty || 0)));
+    }
+  };
+
+  const handlePlus = (idx, v) => {
+    if (mode === 'quantity') {
+      updateVariant(idx, 'quantity', (parseInt(v.quantity) || 0) + 1);
+    } else if (v.isNew) {
+      updateVariant(idx, 'delta', (parseInt(v.delta) || 0) + 1);
+    } else {
+      const cur = (v.currentQty || 0) + (parseInt(v.delta) || 0);
+      updateVariant(idx, 'delta', String(cur + 1 - (v.currentQty || 0)));
+    }
+  };
+
+  const total = variants.reduce((sum, v) => {
+    if (mode === 'quantity') return sum + (parseInt(v.quantity) || 0);
+    if (v.isNew) return sum + (parseInt(v.delta) || 0);
+    return sum + (v.currentQty || 0) + (parseInt(v.delta) || 0);
+  }, 0);
+
+  const totalBadgeClass = 'edit-total-quantity';
+  const totalLabel = `Toplam: ${total} adet`;
+
+  // Form içi varyant çakışmalarını tespit et
+  const intraConflicts = useMemo(
+    () => detectIntraVariantConflicts(variants),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(variants.map((v) => ({ c: v.colorCode, n: v.colorName })))]
+  );
+  const conflictIndices = useMemo(
+    () => new Set(intraConflicts.flatMap((c) => c.indices)),
+    [intraConflicts]
+  );
+
+  // Üst bileşene çakışma durumunu bildir
+  useEffect(() => {
+    onConflictsChange?.(intraConflicts.length > 0);
+  }, [intraConflicts.length, onConflictsChange]);
 
   return (
     <div className="edit-variants-section">
       <div className="edit-variants-header">
         <label>
-          {mode === 'quantity' ? 'Renk Çeşitleri *' : 'Varyant Bazlı Delta Girişi'}
+          Renk Çeşitleri{mode === 'quantity' ? ' *' : ''}
         </label>
-        <span className={totalBadgeClass}>{totalLabel}</span>
+        <div className="edit-variants-header-right">
+          {mode === 'delta' && onEditProductInfo && (
+            <button
+              type="button"
+              className="edit-variants-info-btn"
+              onClick={onEditProductInfo}
+              title="Ürün adı / kategori düzenle"
+            >
+              ✏
+            </button>
+          )}
+          <span className={totalBadgeClass}>{totalLabel}</span>
+        </div>
       </div>
 
       <div className="edit-variants-list">
-        {variants.map((v, idx) => (
-          <div
-            key={idx}
-            className={`edit-variant-row${mode === 'delta' ? ' edit-variant-row--delta' : ''}`}
-          >
-            <div className="edit-variant-inputs">
-              {mode === 'quantity' ? (
-                <>
+        {variants.map((v, idx) => {
+          // Delta modda: delta ≠ 0; quantity modda: adet > 0
+          const activeQty = mode === 'delta'
+            ? (parseInt(v.delta) || 0)
+            : (parseInt(v.quantity) || 0);
+          const showReason = perVariantReason && activeQty !== 0;
+          // InlineReasonSelector için: quantity modda her zaman arttırma yönünde
+          const reasonDelta = mode === 'delta' ? activeQty : 1;
+
+          return (
+            <div key={idx} className={`edit-variant-group${showReason ? ' has-reason' : ''}`}>
+              <div
+                className={`edit-variant-row${mode === 'delta' ? ' edit-variant-row--delta' : ''}${v.isNew ? ' edit-variant-row--new' : ''}${v.isDeleting ? ' edit-variant-row--deleting' : ''}${conflictIndices.has(idx) ? ' edit-variant-row--conflict' : ''}`}
+              >
+                <div className="edit-variant-inputs">
                   <input
                     type="text"
                     placeholder="Renk kodu (isteğe bağlı)"
@@ -75,92 +196,153 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
                     disabled={disabled}
                     className="edit-color-name-input"
                   />
-                </>
-              ) : (
-                <span className="edit-variant-label-text">
-                  <span className="edit-variant-label-color">
-                    {[v.colorCode, v.colorName].filter(Boolean).join(' — ') || 'Renksiz'}
-                  </span>
-                  {v.currentQty !== undefined && (
-                    <span className="edit-variant-label-stock">{v.currentQty} adet</span>
-                  )}
-                </span>
-              )}
 
-              <div className="edit-quantity-container">
-                <button
-                  type="button"
-                  className="edit-quantity-btn minus"
-                  onClick={() =>
-                    updateVariant(
-                      idx,
-                      valueField,
-                      mode === 'quantity'
-                        ? Math.max(0, (parseInt(v[valueField]) || 0) - 1)
-                        : (parseInt(v[valueField]) || 0) - 1
-                    )
-                  }
-                  disabled={
-                    disabled || (mode === 'quantity' && (parseInt(v[valueField]) || 0) === 0)
-                  }
-                >
-                  −
-                </button>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder={mode === 'quantity' ? 'Adet' : '±'}
-                  value={v[valueField]}
-                  onChange={(e) => updateVariant(idx, valueField, e.target.value)}
-                  disabled={disabled}
-                  className={`edit-quantity-input${
-                    mode === 'delta'
-                      ? parseInt(v[valueField]) > 0
-                        ? ' delta-positive'
-                        : parseInt(v[valueField]) < 0
-                        ? ' delta-negative'
-                        : ''
-                      : ''
-                  }`}
-                  style={{ textAlign: 'center' }}
-                />
-                <button
-                  type="button"
-                  className="edit-quantity-btn plus"
-                  onClick={() =>
-                    updateVariant(idx, valueField, (parseInt(v[valueField]) || 0) + 1)
-                  }
-                  disabled={disabled}
-                >
-                  +
-                </button>
+                  <div className="edit-quantity-container">
+                    <button
+                      type="button"
+                      className="edit-quantity-btn minus"
+                      onClick={() => handleMinus(idx, v)}
+                      disabled={disabled || parseInt(getDisplayVal(v)) === 0}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Adet"
+                      value={getDisplayVal(v)}
+                      onChange={(e) => handleDisplayChange(idx, e.target.value, v)}
+                      disabled={disabled}
+                      className="edit-quantity-input"
+                      style={{ textAlign: 'center' }}
+                    />
+                    <button
+                      type="button"
+                      className="edit-quantity-btn plus"
+                      onClick={() => handlePlus(idx, v)}
+                      disabled={disabled}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {v.isDeleting ? (
+                  <button
+                    type="button"
+                    className="edit-remove-variant-btn edit-remove-variant-btn--undo"
+                    onClick={() => undoDelete(idx)}
+                    disabled={disabled}
+                    title="Silmeyi geri al"
+                  >
+                    ↩ Geri Al
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="edit-remove-variant-btn"
+                    onClick={() => removeVariant(idx)}
+                    disabled={disabled || (mode === 'quantity' && variants.length === 1)}
+                    title="Bu rengi sil"
+                  >
+                    Sil
+                  </button>
+                )}
               </div>
-            </div>
 
-            {mode === 'quantity' && (
-              <button
-                type="button"
-                className="edit-remove-variant-btn"
-                onClick={() => removeVariant(idx)}
-                disabled={disabled || variants.length === 1}
-                title="Bu rengi sil"
-              >
-                Sil
-              </button>
-            )}
+              {showReason && (
+                <InlineReasonSelector
+                  value={{ stockReason: v.stockReason, returnReason: v.returnReason, returnDescription: v.returnDescription }}
+                  onChange={(val) => updateReason(idx, val)}
+                  delta={reasonDelta}
+                  disabled={disabled}
+                />
+              )}
+            </div>
+          );
+        })}
+        {intraConflicts.length > 0 && (
+          <div className="edit-variants-conflict-summary">
+            {intraConflicts.map((c, i) => (
+              <div key={i} className={`edit-variant-conflict-msg edit-variant-conflict-msg--${c.type}`}>
+                ⚠ {c.detail}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
-      {mode === 'quantity' && (
-        <button
-          type="button"
-          className="edit-add-variant-btn"
-          onClick={addVariant}
+      <button
+        type="button"
+        className="edit-add-variant-btn"
+        onClick={addVariant}
+        disabled={disabled}
+      >
+        + Yeni Renk Ekle
+      </button>
+    </div>
+  );
+}
+
+/**
+ * InlineReasonSelector — Her varyant satırı için kompakt stok sebebi seçici (delta modu)
+ *
+ * delta > 0  → increase modunda seçenekler (Satın Alım / Ürün İade)
+ * delta < 0  → decrease modunda seçenekler (Ürün Satıldı / Firmaya İade)
+ * delta === 0 → render edilmez (çağıran tarafından kontrol edilmeli)
+ */
+export function InlineReasonSelector({ value, onChange, delta = 0, disabled = false }) {
+  const { stockReason = '', returnReason = '', returnDescription = '' } = value || {};
+  const mode = Number(delta) >= 0 ? 'increase' : 'decrease';
+
+  const options =
+    mode === 'increase'
+      ? [{ value: 'purchase', label: 'Satın Alım' }, { value: 'return', label: 'Ürün İade' }]
+      : [{ value: 'sold', label: 'Ürün Satıldı' }, { value: 'return_to_supplier', label: 'Firmaya İade' }];
+
+  const effectiveReason = options.some((o) => o.value === stockReason)
+    ? stockReason
+    : options[0].value;
+
+  const showReturnDetail =
+    effectiveReason === 'return' || effectiveReason === 'return_to_supplier';
+
+  return (
+    <div className="inline-reason-selector">
+      <select
+        value={effectiveReason}
+        onChange={(e) => onChange({ stockReason: e.target.value, returnReason: '', returnDescription: '' })}
+        disabled={disabled}
+        className="inline-reason-select"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+
+      {showReturnDetail && (
+        <select
+          value={returnReason}
+          onChange={(e) => onChange({ stockReason: effectiveReason, returnReason: e.target.value, returnDescription: '' })}
           disabled={disabled}
+          className="inline-reason-select"
         >
-          + Yeni Renk Ekle
-        </button>
+          <option value="">İade sebebi seçin...</option>
+          <option value="wrong_product">Yanlış Ürün</option>
+          <option value="damaged">Bozuk Ürün</option>
+          <option value="other">Diğer</option>
+        </select>
+      )}
+
+      {returnReason === 'other' && (
+        <input
+          type="text"
+          value={returnDescription}
+          onChange={(e) => onChange({ stockReason: effectiveReason, returnReason, returnDescription: e.target.value })}
+          placeholder="İade açıklaması..."
+          disabled={disabled}
+          className="inline-reason-desc"
+        />
       )}
     </div>
   );

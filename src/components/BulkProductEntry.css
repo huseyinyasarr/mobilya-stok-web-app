@@ -221,10 +221,83 @@
 
 /* ---- Delta Modu — edit-* Override'ları ---- */
 
-/* 2 sütunlu grid: etiket + miktar */
+/* Delta modda tüm satırlar: renk kodu + renk adı + miktar (+ isteğe bağlı mevcut adet) */
 .edit-variant-row--delta .edit-variant-inputs {
-  grid-template-columns: 1fr 1.6fr;
+  grid-template-columns: 1fr 1fr 1.4fr;
   align-items: center;
+}
+
+
+/* Mevcut stok göstergesi — delta modda inputların sağında küçük badge */
+.edit-variant-current-qty {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* Ürün bilgisi düzenleme butonu (kalem) — variants header'da */
+.edit-variants-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-variants-info-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.edit-variants-info-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #9ca3af;
+}
+
+/* Bekleyen işlem uyarısı */
+.bulk-pending-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #92400e;
+  line-height: 1.4;
+}
+
+/* Ürün bilgisi düzenleme paneli */
+.bulk-product-info-edit {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bulk-product-info-edit-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
 }
 
 /* Read-only renk etiketi — mevcut stok bilgisiyle */

@@ -83,6 +83,13 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
     return getSortedProducts(searched, searchQuery ? 'relevance' : sortBy);
   }, [products, searchQuery, sortBy]);
 
+  const availableBrands = useMemo(() => {
+    const safe = products || [];
+    const set = new Set();
+    safe.forEach((p) => { if (p.brand?.trim()) set.add(p.brand.trim()); });
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [products]);
+
   if (loading) {
     return (
       <div className="product-list-container">
@@ -361,10 +368,11 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
 
       {/* Edit Modal */}
       {editModalProduct && (
-        <ProductEditModal 
+        <ProductEditModal
           product={editModalProduct}
           onClose={closeEditModal}
           onProductUpdated={handleProductUpdated}
+          brands={availableBrands}
         />
       )}
     </div>

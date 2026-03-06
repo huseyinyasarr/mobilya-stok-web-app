@@ -5,7 +5,7 @@ import {
   saveProductResolved,
   applyConflictResolutions,
 } from '../utils/productService';
-import { VariantsEditor, StockReasonSelector, BrandInput, CategoryInput } from './ProductFormFields';
+import { VariantsEditor, BrandInput, CategoryInput } from './ProductFormFields';
 import ConfirmDialog from './ConfirmDialog';
 import './ProductEditModal.css';
 
@@ -135,13 +135,8 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
     description: '',
   });
   const [variants, setVariants] = useState([
-    { colorCode: '', colorName: '', quantity: '' },
+    { colorCode: '', colorName: '', quantity: '', stockReason: 'purchase', returnReason: '', returnDescription: '' },
   ]);
-  const [stockReasonData, setStockReasonData] = useState({
-    stockReason: 'purchase',
-    returnReason: '',
-    returnDescription: '',
-  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -149,6 +144,7 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
   // Çakışma durumu
   const [conflictData, setConflictData] = useState(null); // { conflicts, existingProductId }
   const [conflictResolutions, setConflictResolutions] = useState([]);
+  const [hasVariantConflicts, setHasVariantConflicts] = useState(false);
 
   // Kapatma uyarısı
   const [closeConfirm, setCloseConfirm] = useState(false);
@@ -188,16 +184,25 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
       }
     }
     if (getTotalQuantity() === 0) { setError('En az 1 adet ürün eklenmelidir'); return false; }
-    if (!stockReasonData.stockReason) { setError('Stok giriş sebebi seçilmelidir'); return false; }
-    if (stockReasonData.stockReason === 'return' && !stockReasonData.returnReason) {
-      setError('İade sebebi seçilmelidir'); return false;
-    }
-    if (
-      stockReasonData.stockReason === 'return' &&
-      stockReasonData.returnReason === 'other' &&
-      !stockReasonData.returnDescription.trim()
-    ) {
-      setError('İade açıklaması girilmelidir'); return false;
+    if (hasVariantConflicts) { setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez'); return false; }
+
+    // Per-variant stok sebebi validasyonu
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i];
+      if ((parseInt(v.quantity) || 0) === 0) continue;
+      if (!v.stockReason) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için stok giriş sebebi seçilmelidir`); return false;
+      }
+      const needsReturn = v.stockReason === 'return' || v.stockReason === 'return_to_supplier';
+      if (needsReturn && !v.returnReason) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için iade sebebi seçilmelidir`); return false;
+      }
+      if (needsReturn && v.returnReason === 'other' && !(v.returnDescription || '').trim()) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için iade açıklaması girilmelidir`); return false;
+      }
     }
     return true;
   };
@@ -217,9 +222,6 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
         category: formData.category,
         description: formData.description,
         variants,
-        stockReason: stockReasonData.stockReason,
-        returnReason: stockReasonData.returnReason,
-        returnDescription: stockReasonData.returnDescription,
         currentUser,
       });
 
@@ -269,9 +271,6 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
         name: formData.name,
         brand: formData.brand,
         resolvedVariants,
-        stockReason: stockReasonData.stockReason,
-        returnReason: stockReasonData.returnReason,
-        returnDescription: stockReasonData.returnDescription,
         currentUser,
       });
 
@@ -367,18 +366,13 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
               />
             </div>
 
-            <StockReasonSelector
-              value={stockReasonData}
-              onChange={setStockReasonData}
-              mode="increase"
-              disabled={loading}
-            />
-
             <VariantsEditor
               variants={variants}
               onChange={setVariants}
               mode="quantity"
               disabled={loading}
+              onConflictsChange={setHasVariantConflicts}
+              perVariantReason
             />
 
             <div className="edit-form-actions">

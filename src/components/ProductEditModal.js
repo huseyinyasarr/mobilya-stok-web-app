@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { ref, update, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useCategories } from '../contexts/CategoriesContext';
 import { createLog, LOG_ACTIONS } from '../utils/logging';
 import { buildUserRef } from '../utils/productService';
+import { BrandInput, CategoryInput } from './ProductFormFields';
+import ConfirmDialog from './ConfirmDialog';
 import './ProductEditModal.css';
 
-function ProductEditModal({ product, onClose, onProductUpdated }) {
+function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,9 +38,34 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
   const [stockChangeReason, setStockChangeReason] = useState('');
   const [stockChangeDescription, setStockChangeDescription] = useState('');
 
+  // Kapatma uyarısı — kaydedilmemiş değişiklik varsa ConfirmDialog göster
+  const [closeConfirm, setCloseConfirm] = useState(false);
 
+  const isFormDirty = () => {
+    if (formData.name.trim() !== (product.name || '').trim()) return true;
+    if (formData.brand.trim() !== (product.brand || '').trim()) return true;
+    if (formData.category !== (product.category || '')) return true;
+    if (formData.description.trim() !== (product.description || '').trim()) return true;
+    const oldV = product.variants || [];
+    if (variants.length !== oldV.length) return true;
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i];
+      const o = oldV[i] || {};
+      if ((v.colorCode || '').trim() !== (o.colorCode || '').trim()) return true;
+      if ((v.colorName || '').trim() !== (o.colorName || '').trim()) return true;
+      if ((parseInt(v.quantity) || 0) !== (parseInt(o.quantity) || 0)) return true;
+    }
+    return false;
+  };
 
-  const { categories } = useCategories();
+  const handleRequestClose = () => {
+    if (loading) return;
+    if (isFormDirty()) {
+      setCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  };
 
   // Component mount olduğunda orijinal stok miktarını ayarla
   useEffect(() => {
@@ -212,8 +238,10 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     // Değişiklikleri tespit et
     const oldTotalQuantity = originalTotalQuantity;
     const newTotalQuantity = getTotalQuantity();
-    const nameChanged = product.name !== formData.name.trim();
-    const categoryChanged = product.category !== formData.category;
+    const nameChanged = (product.name || '').trim() !== formData.name.trim();
+    const brandChanged = (product.brand || '').trim() !== formData.brand.trim();
+    const categoryChanged = (product.category || '') !== formData.category;
+    const descriptionChanged = (product.description || '').trim() !== formData.description.trim();
     
     // Varyant değişikliklerini detaylı analiz et
     const variantChanges = analyzeVariantChanges(product.variants || [], cleanVariants);
@@ -292,16 +320,16 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
       }
     }
     if (nameChanged) {
-      logDetails.nameChanged = {
-        from: product.name,
-        to: formData.name.trim()
-      };
+      logDetails.nameChanged = { from: product.name || '', to: formData.name.trim() };
+    }
+    if (brandChanged) {
+      logDetails.brandChanged = { from: product.brand || '', to: formData.brand.trim() };
     }
     if (categoryChanged) {
-      logDetails.categoryChanged = {
-        from: product.category,
-        to: formData.category
-      };
+      logDetails.categoryChanged = { from: product.category || '', to: formData.category };
+    }
+    if (descriptionChanged) {
+      logDetails.descriptionChanged = { from: product.description || '', to: formData.description.trim() };
     }
     if (variantChanges.hasChanges) {
       logDetails.variantChanges = variantChanges.changes;
@@ -420,10 +448,10 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
     }
   };
 
-  // Modal dışına tıklama ile kapatma
+  // Modal dışına tıklama ile kapatma — kaydedilmemiş değişiklik varsa uyarı göster
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleRequestClose();
     }
   };
 
@@ -502,7 +530,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
         <div className="edit-modal-header">
           <h2>✏️ Ürün Düzenle</h2>
           <button 
-            onClick={onClose} 
+            onClick={handleRequestClose} 
             className="edit-close-btn"
             disabled={loading}
           >
@@ -540,36 +568,24 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
 
             <div className="edit-form-group">
               <label htmlFor="edit-brand">Marka *</label>
-              <input
-                type="text"
-                id="edit-brand"
-                name="brand"
+              <BrandInput
                 value={formData.brand}
-                onChange={handleInputChange}
-                placeholder="Örn: IKEA, Doğtaş, Kelebek"
+                onChange={(val) => setFormData((prev) => ({ ...prev, brand: val }))}
+                brands={brands}
                 disabled={loading}
-                required
+                placeholder="Örn: IKEA, Doğtaş, Kelebek"
               />
             </div>
           </div>
 
           <div className="edit-form-row">
             <div className="edit-form-group">
-              <label htmlFor="edit-category">Kategori *</label>
-              <select
-                id="edit-category"
-                name="category"
+              <label>Kategori *</label>
+              <CategoryInput
                 value={formData.category}
-                onChange={handleInputChange}
+                onChange={(id) => setFormData((prev) => ({ ...prev, category: id }))}
                 disabled={loading}
-                required
-              >
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
@@ -744,7 +760,7 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
             <div className="edit-action-buttons">
               <button 
                 type="button" 
-                onClick={onClose}
+                onClick={handleRequestClose}
                 className="edit-cancel-btn"
                 disabled={loading}
               >
@@ -761,6 +777,17 @@ function ProductEditModal({ product, onClose, onProductUpdated }) {
           </div>
         </form>
       </div>
+
+      {closeConfirm && (
+        <ConfirmDialog
+          message="Yapılan değişiklikler kaydedilmeyecek. Çıkmak istiyor musunuz?"
+          onConfirm={onClose}
+          onCancel={() => setCloseConfirm(false)}
+          confirmLabel="Çık"
+          cancelLabel="Devam Et"
+          variant="neutral"
+        />
+      )}
 
       {/* Stok Nedeni Modal'ı */}
       {showStockReasonModal && (

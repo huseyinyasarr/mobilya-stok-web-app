@@ -5,6 +5,75 @@ import { createLog, LOG_ACTIONS } from './logging';
 // ── Renk varyantı çakışma tespiti ─────────────────────────────────────────────
 
 /**
+ * Tek bir varyant listesi içindeki (form içi) çakışmaları tespit eder.
+ *
+ * Çakışma tipleri:
+ *   - duplicate              : Aynı renk kodu veya (kodsuz) aynı renk adı birden fazla satırda
+ *   - code_name_mismatch     : Aynı renk kodu, farklı dolu renk adları
+ *   - name_only_code_asymmetry: Aynı renk adı, birinde kod var diğerinde yok
+ *
+ * @param {Array} variants - { colorCode, colorName, ... }[]
+ * @returns {Array} conflicts — [{ indices: [i, j], type, detail }]
+ */
+export function detectIntraVariantConflicts(variants) {
+  const conflicts = [];
+
+  for (let i = 0; i < variants.length; i++) {
+    const a = variants[i];
+    const aCode = (a.colorCode || '').trim();
+    const aName = (a.colorName || '').trim();
+    if (!aCode && !aName) continue;
+
+    for (let j = i + 1; j < variants.length; j++) {
+      const b = variants[j];
+      const bCode = (b.colorCode || '').trim();
+      const bName = (b.colorName || '').trim();
+      if (!bCode && !bName) continue;
+
+      if (aCode && bCode && aCode === bCode) {
+        if (aName && bName && aName.toLowerCase() !== bName.toLowerCase()) {
+          conflicts.push({
+            indices: [i, j],
+            type: 'code_name_mismatch',
+            detail: `"${aCode}" renk kodu aynı ama adlar farklı ("${aName}" / "${bName}")`,
+          });
+        } else {
+          conflicts.push({
+            indices: [i, j],
+            type: 'duplicate',
+            detail: `"${aCode}" renk kodu birden fazla satırda kullanılmış`,
+          });
+        }
+        continue;
+      }
+
+      if (!aCode && !bCode && aName && bName && aName.toLowerCase() === bName.toLowerCase()) {
+        conflicts.push({
+          indices: [i, j],
+          type: 'duplicate',
+          detail: `"${aName}" renk adı birden fazla satırda kullanılmış`,
+        });
+        continue;
+      }
+
+      if (
+        aName && bName &&
+        aName.toLowerCase() === bName.toLowerCase() &&
+        !!aCode !== !!bCode
+      ) {
+        conflicts.push({
+          indices: [i, j],
+          type: 'name_only_code_asymmetry',
+          detail: `"${aName}" renk adı hem kodlu hem kodsuz satırda var`,
+        });
+      }
+    }
+  }
+
+  return conflicts;
+}
+
+/**
  * Yeni varyantları mevcut ürünün varyantlarıyla karşılaştırarak çakışmaları döndürür.
  *
  * Eşleştirme önceliği (sadece o ürün bağlamında geçerlidir):
@@ -130,6 +199,7 @@ export async function saveProduct({
   category,
   description = '',
   variants,
+  // Eski global reason alanları geriye dönük uyumluluk için tutuldu
   stockReason,
   returnReason = '',
   returnDescription = '',
@@ -137,11 +207,16 @@ export async function saveProduct({
 }) {
   const productsRef = ref(db, 'products');
 
+  // Per-variant reason alanlarını koruyarak temizle (Firebase'e yazılmadan önce soyulur)
   const cleanVariants = variants
     .map((v) => ({
       colorCode: (v.colorCode || '').trim(),
       colorName: (v.colorName || '').trim(),
       quantity: parseInt(v.quantity) || 0,
+      // Per-variant reason alanları (eğer yoksa global reason fallback)
+      stockReason: v.stockReason || stockReason || 'purchase',
+      returnReason: v.returnReason || returnReason || '',
+      returnDescription: v.returnDescription || returnDescription || '',
     }))
     .filter((v) => v.quantity > 0);
 
@@ -169,8 +244,9 @@ export async function saveProduct({
   }
 
   if (existingId) {
-    // Çakışma kontrolü
-    const conflicts = detectVariantConflicts(cleanVariants, existingData.variants || []);
+    // Çakışma kontrolü (reason alanları çakışma tespitinde kullanılmaz)
+    const conflictCheckVariants = cleanVariants.map(({ stockReason: _sr, returnReason: _rr, returnDescription: _rd, ...v }) => v);
+    const conflicts = detectVariantConflicts(conflictCheckVariants, existingData.variants || []);
     if (conflicts.length > 0) {
       return { action: 'conflict', conflicts, existingProductId: existingId };
     }
@@ -179,9 +255,6 @@ export async function saveProduct({
       name: existingData.name,
       brand: existingData.brand,
       addVariants: cleanVariants,
-      stockReason,
-      returnReason,
-      returnDescription,
       currentUser,
     });
   }
@@ -192,9 +265,6 @@ export async function saveProduct({
     category,
     description,
     cleanVariants,
-    stockReason,
-    returnReason,
-    returnDescription,
     currentUser,
   });
 }
@@ -208,6 +278,7 @@ export async function saveProductResolved({
   name,
   brand,
   resolvedVariants,
+  // Geriye dönük uyumluluk için global reason alanları
   stockReason,
   returnReason = '',
   returnDescription = '',
@@ -218,6 +289,9 @@ export async function saveProductResolved({
       colorCode: (v.colorCode || '').trim(),
       colorName: (v.colorName || '').trim(),
       quantity: parseInt(v.quantity) || 0,
+      stockReason: v.stockReason || stockReason || 'purchase',
+      returnReason: v.returnReason || returnReason || '',
+      returnDescription: v.returnDescription || returnDescription || '',
       ...(v._forceNew ? { _forceNew: true } : {}),
     }))
     .filter((v) => v.quantity > 0);
@@ -227,9 +301,6 @@ export async function saveProductResolved({
     name,
     brand,
     addVariants: cleanVariants,
-    stockReason,
-    returnReason,
-    returnDescription,
     currentUser,
   });
 }
@@ -278,9 +349,6 @@ async function performStockUpdate({
   name,
   brand,
   addVariants,
-  stockReason,
-  returnReason,
-  returnDescription,
   currentUser,
 }) {
   const productRef = ref(db, `products/${existingId}`);
@@ -291,6 +359,7 @@ async function performStockUpdate({
     if (!currentData) return currentData;
 
     let existingVariants = currentData.variants ? [...currentData.variants] : [];
+    // variantChanges artık _ref ile reason bilgisini taşır (gruplama için)
     const variantChanges = [];
 
     for (const v of addVariants) {
@@ -299,7 +368,6 @@ async function performStockUpdate({
       if (idx !== -1) {
         const oldQty = existingVariants[idx].quantity || 0;
         const newQty = oldQty + v.quantity;
-        // Renk adı: eğer yeni varyantta ad varsa kullan; yoksa mevcut adı koru
         const resolvedName = v.colorName || existingVariants[idx].colorName;
 
         variantChanges.push({
@@ -308,6 +376,7 @@ async function performStockUpdate({
           quantityChange: v.quantity,
           oldQuantity: oldQty,
           newQuantity: newQty,
+          _dvRef: v, // per-variant reason için
         });
         existingVariants[idx] = {
           ...existingVariants[idx],
@@ -316,7 +385,7 @@ async function performStockUpdate({
         };
       } else {
         // Yeni varyant (eşleşme yok veya forceNew)
-        const { _forceNew, ...cleanV } = v;
+        const { _forceNew, stockReason: _sr, returnReason: _rr, returnDescription: _rd, ...cleanV } = v;
         existingVariants.push(cleanV);
         variantChanges.push({
           colorCode: v.colorCode,
@@ -324,6 +393,7 @@ async function performStockUpdate({
           quantityChange: v.quantity,
           oldQuantity: 0,
           newQuantity: v.quantity,
+          _dvRef: v,
         });
       }
     }
@@ -332,26 +402,49 @@ async function performStockUpdate({
     const oldTotal = currentData.totalQuantity || 0;
     const newTotal = oldTotal + addedQty;
 
-    const stockEntry = buildStockEntry({
-      type: 'increase',
-      stockReason,
-      returnReason,
-      returnDescription,
-      quantity: addedQty,
-      remainingStock: newTotal,
-      variantChanges,
-      currentUser,
-      now,
-    });
+    // Per-variant reason: aynı sebepteki varyantları grupla
+    const reasonGroups = new Map();
+    for (const vc of variantChanges) {
+      const dv = vc._dvRef || {};
+      const reason = dv.stockReason || 'purchase';
+      const key = `${reason}|${dv.returnReason || ''}`;
+      if (!reasonGroups.has(key)) {
+        reasonGroups.set(key, {
+          stockReason: reason,
+          returnReason: dv.returnReason || '',
+          returnDescription: dv.returnDescription || '',
+          quantity: 0,
+          variantChanges: [],
+        });
+      }
+      const g = reasonGroups.get(key);
+      g.quantity += vc.quantityChange;
+      const { _dvRef, ...vcClean } = vc;
+      g.variantChanges.push(vcClean);
+    }
 
-    resultData = { totalQuantity: newTotal, oldTotal };
+    const stockEntries = [...reasonGroups.values()].map((g) =>
+      buildStockEntry({
+        type: 'increase',
+        stockReason: g.stockReason,
+        returnReason: g.returnReason,
+        returnDescription: g.returnDescription,
+        quantity: g.quantity,
+        remainingStock: newTotal,
+        variantChanges: g.variantChanges,
+        currentUser,
+        now,
+      })
+    );
+
+    resultData = { totalQuantity: newTotal, oldTotal, stockReason: addVariants[0]?.stockReason || 'purchase' };
 
     return {
       ...currentData,
       variants: existingVariants,
       totalQuantity: newTotal,
       lastUpdated: now,
-      stockHistory: [...(currentData.stockHistory || []), stockEntry],
+      stockHistory: [...(currentData.stockHistory || []), ...stockEntries],
     };
   });
 
@@ -362,12 +455,7 @@ async function performStockUpdate({
     {
       quantityChange: { from: resultData?.oldTotal, to: resultData?.totalQuantity },
       stockChangeType: 'increase',
-      stockChangeReason: stockReason,
-      ...(stockReason === 'return' && returnReason === 'other' && returnDescription
-        ? { stockChangeDescription: `other:${returnDescription}` }
-        : stockReason === 'return' && returnReason
-        ? { stockChangeDescription: returnReason }
-        : {}),
+      stockChangeReason: 'per_variant',
     }
   );
 
@@ -380,44 +468,65 @@ async function performCreate({
   category,
   description,
   cleanVariants,
-  stockReason,
-  returnReason,
-  returnDescription,
   currentUser,
 }) {
   const now = new Date().toISOString();
   const productsRef = ref(db, 'products');
   const totalQuantity = cleanVariants.reduce((s, v) => s + v.quantity, 0);
 
-  const stockEntry = buildStockEntry({
-    type: 'increase',
-    stockReason,
-    returnReason,
-    returnDescription,
-    quantity: totalQuantity,
-    remainingStock: totalQuantity,
-    variantChanges: cleanVariants.map((v) => ({
-      colorCode: v.colorCode,
-      colorName: v.colorName,
-      quantityChange: v.quantity,
-      oldQuantity: 0,
-      newQuantity: v.quantity,
-    })),
-    currentUser,
-    now,
+  // Per-variant reason: aynı sebepteki varyantları grupla → ayrı stok geçmişi
+  const reasonGroups = new Map();
+  for (const v of cleanVariants) {
+    const reason = v.stockReason || 'purchase';
+    const key = `${reason}|${v.returnReason || ''}`;
+    if (!reasonGroups.has(key)) {
+      reasonGroups.set(key, {
+        stockReason: reason,
+        returnReason: v.returnReason || '',
+        returnDescription: v.returnDescription || '',
+        variants: [],
+      });
+    }
+    reasonGroups.get(key).variants.push(v);
+  }
+
+  const stockHistory = [...reasonGroups.values()].map((g) => {
+    const groupQty = g.variants.reduce((s, v) => s + v.quantity, 0);
+    return buildStockEntry({
+      type: 'increase',
+      stockReason: g.stockReason,
+      returnReason: g.returnReason,
+      returnDescription: g.returnDescription,
+      quantity: groupQty,
+      remainingStock: totalQuantity,
+      variantChanges: g.variants.map((v) => ({
+        colorCode: v.colorCode,
+        colorName: v.colorName,
+        quantityChange: v.quantity,
+        oldQuantity: 0,
+        newQuantity: v.quantity,
+      })),
+      currentUser,
+      now,
+    });
   });
+
+  // Reason alanları Firebase'e yazılmaz
+  const variantsToStore = cleanVariants.map(
+    ({ stockReason: _sr, returnReason: _rr, returnDescription: _rd, ...v }) => v
+  );
 
   const productData = {
     name: name.trim(),
     brand: brand.trim(),
     category,
     description: description.trim(),
-    variants: cleanVariants,
+    variants: variantsToStore,
     totalQuantity,
     createdAt: now,
     lastUpdated: now,
     createdBy: buildUserRef(currentUser),
-    stockHistory: [stockEntry],
+    stockHistory,
   };
 
   const newRef = await push(productsRef, productData);
@@ -426,12 +535,7 @@ async function performCreate({
     LOG_ACTIONS.PRODUCT_CREATED,
     currentUser,
     { id: newRef.key, name: productData.name, brand: productData.brand, category, totalQuantity },
-    {
-      stockReason,
-      returnReason: stockReason === 'return' ? returnReason : null,
-      returnDescription:
-        stockReason === 'return' && returnReason === 'other' ? returnDescription : null,
-    }
+    { stockReason: 'per_variant' }
   );
 
   return { id: newRef.key, action: 'created', totalQuantity };
@@ -446,7 +550,7 @@ export async function syncBulkStockUpdate(entry, currentUser) {
   const productRef = ref(db, `products/${d.productId}`);
   const now = new Date().toISOString();
   let updatedProduct = null;
-  const totalDelta = d.deltaVariants.reduce((s, v) => s + v.delta, 0);
+  const totalDelta = (d.deltaVariants || []).reduce((s, v) => s + (v.delta || 0), 0);
 
   await runTransaction(productRef, (currentData) => {
     if (!currentData) return currentData;
@@ -454,17 +558,44 @@ export async function syncBulkStockUpdate(entry, currentUser) {
     let variants = currentData.variants ? [...currentData.variants] : [];
     const variantChanges = [];
 
-    for (const dv of d.deltaVariants) {
-      const key = `${dv.colorCode}_${dv.colorName}`;
-      const idx = variants.findIndex((v) => `${v.colorCode}_${v.colorName}` === key);
+    for (const dv of (d.deltaVariants || [])) {
+      // Eşleştirme: önce originalColorCode/Name kullan (kullanıcı kodu değiştirmişse orijinal ile bul)
+      // isNew ise doğrudan yeni varyant olarak ekle
+      const matchCode = dv.isNew ? null : (dv.originalColorCode ?? dv.colorCode);
+      const matchName = dv.isNew ? null : (dv.originalColorName ?? dv.colorName);
+      const matchKey = `${matchCode}_${matchName}`;
+
+      const idx = dv.isNew
+        ? -1
+        : variants.findIndex((v) => `${v.colorCode}_${v.colorName}` === matchKey);
 
       if (idx !== -1) {
         const oldQty = variants[idx].quantity || 0;
-        const newQty = Math.max(0, oldQty + dv.delta);
-        variantChanges.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantityChange: dv.delta, oldQuantity: oldQty, newQuantity: newQty });
-        variants[idx] = { ...variants[idx], quantity: newQty };
-      } else if (dv.delta > 0) {
-        variantChanges.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantityChange: dv.delta, oldQuantity: 0, newQuantity: dv.delta });
+        const newQty = Math.max(0, oldQty + (dv.delta || 0));
+        // Sadece miktar değişmişse log'a ekle; dvRef ile stok sebebini eşleştirmek için tut
+        if (dv.delta !== 0) {
+          variantChanges.push({
+            colorCode: dv.colorCode,
+            colorName: dv.colorName,
+            quantityChange: dv.delta,
+            oldQuantity: oldQty,
+            newQuantity: newQty,
+            _dvRef: dv, // reason gruplama için
+          });
+        }
+        // Renk kodu/adı değiştiyse güncelle, yoksa orijinali koru
+        variants[idx] = {
+          ...variants[idx],
+          quantity: newQty,
+          ...(dv.colorCode !== matchCode && { colorCode: dv.colorCode }),
+          ...(dv.colorName !== matchName && { colorName: dv.colorName }),
+        };
+      } else if (dv.isNew && (dv.delta || 0) > 0) {
+        variantChanges.push({
+          colorCode: dv.colorCode, colorName: dv.colorName,
+          quantityChange: dv.delta, oldQuantity: 0, newQuantity: dv.delta,
+          _dvRef: dv,
+        });
         variants.push({ colorCode: dv.colorCode, colorName: dv.colorName, quantity: dv.delta });
       }
     }
@@ -472,29 +603,64 @@ export async function syncBulkStockUpdate(entry, currentUser) {
     const oldTotal = currentData.totalQuantity || 0;
     const newTotal = Math.max(0, oldTotal + totalDelta);
 
-    const stockEntry = buildStockEntry({
-      type: totalDelta >= 0 ? 'increase' : 'decrease',
-      stockReason: d.stockReason,
-      returnReason: d.returnReason || null,
-      returnDescription: d.returnDescription || null,
-      quantity: Math.abs(totalDelta),
-      remainingStock: newTotal,
-      variantChanges,
-      currentUser,
-      now,
-    });
-
     const existingHistory = currentData.stockHistory
       ? Object.values(currentData.stockHistory)
       : [];
 
+    // Her varyant kendi stok sebebini taşır → aynı sebebe sahip varyantlar gruplandırılır
+    const reasonGroups = new Map();
+    for (const vc of variantChanges) {
+      const dv = vc._dvRef || {};
+      const reason = dv.stockReason || (vc.quantityChange >= 0 ? 'purchase' : 'sold');
+      const key = `${reason}|${dv.returnReason || ''}`;
+      if (!reasonGroups.has(key)) {
+        reasonGroups.set(key, {
+          stockReason: reason,
+          returnReason: dv.returnReason || null,
+          returnDescription: dv.returnDescription || null,
+          quantityChange: 0,
+          variantChanges: [],
+        });
+      }
+      const group = reasonGroups.get(key);
+      group.quantityChange += vc.quantityChange;
+      // _dvRef'i log'a taşımayalım
+      const { _dvRef, ...vcClean } = vc;
+      group.variantChanges.push(vcClean);
+    }
+
+    const newEntries = [...reasonGroups.values()].map((g) =>
+      buildStockEntry({
+        type: g.quantityChange >= 0 ? 'increase' : 'decrease',
+        stockReason: g.stockReason,
+        returnReason: g.returnReason,
+        returnDescription: g.returnDescription,
+        quantity: Math.abs(g.quantityChange),
+        remainingStock: newTotal,
+        variantChanges: g.variantChanges,
+        currentUser,
+        now,
+      })
+    );
+
+    const updatedHistory = newEntries.length > 0
+      ? [...existingHistory, ...newEntries]
+      : existingHistory;
+
+    // Stoku sıfıra düşen varyantları temizle (tamamen silinen renkler)
+    const cleanedVariants = variants.filter((v) => (v.quantity || 0) > 0);
+
     updatedProduct = {
       ...currentData,
-      variants,
+      // Ürün adı / marka / kategori override'ları
+      ...(d.nameOverride && { name: d.nameOverride }),
+      ...(d.brandOverride && { brand: d.brandOverride }),
+      ...(d.categoryOverride && { category: d.categoryOverride }),
+      variants: cleanedVariants,
       totalQuantity: newTotal,
       lastUpdated: now,
       quantity: null,
-      stockHistory: [...existingHistory, stockEntry],
+      stockHistory: updatedHistory,
     };
 
     return updatedProduct;
@@ -506,7 +672,11 @@ export async function syncBulkStockUpdate(entry, currentUser) {
       LOG_ACTIONS.PRODUCT_UPDATED,
       currentUser,
       { id: d.productId, name: d.productName, brand: d.brand, category: d.category, totalQuantity: newTotal },
-      { quantityChange: { from: newTotal - totalDelta, to: newTotal }, stockChangeType: totalDelta >= 0 ? 'increase' : 'decrease', stockChangeReason: d.stockReason }
+      {
+        quantityChange: { from: newTotal - totalDelta, to: newTotal },
+        stockChangeType: totalDelta >= 0 ? 'increase' : 'decrease',
+        stockChangeReason: totalDelta !== 0 ? 'per_variant' : null,
+      }
     );
   }
 }

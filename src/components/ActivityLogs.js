@@ -315,7 +315,11 @@ function ActivityLogs({ onClose }) {
                             İsim değiştirildi: "{log.details.nameChanged.from}" → "{log.details.nameChanged.to}"
                           </span>
                         )}
-                        
+                        {log.details.brandChanged && (
+                          <span className="detail-item brand-changed">
+                            Marka değiştirildi: "{log.details.brandChanged.from}" → "{log.details.brandChanged.to}"
+                          </span>
+                        )}
                         {log.details.categoryChanged && (
                           <span className="detail-item category-changed">
                             Kategori değiştirildi: "{log.details.categoryChanged.from}" → "{log.details.categoryChanged.to}"

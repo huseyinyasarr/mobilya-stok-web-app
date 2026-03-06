@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { saveProduct, saveProductResolved, applyConflictResolutions, syncBulkStockUpdate } from '../utils/productService';
 import {
@@ -15,16 +15,31 @@ import './ProductEditModal.css';
 import './BulkProductEntry.css';
 
 // Mevcut ürün varyantlarını delta moduna dönüştür (mevcut adet bilgisiyle)
+// originalColorCode / originalColorName: Firebase'de eşleştirme için kullanılır,
+// kullanıcı kodu/adı değiştirse bile asıl kayıt bulunabilir.
+const DEFAULT_REASON = { stockReason: 'purchase', returnReason: '', returnDescription: '' };
+
 const buildDeltaFromProduct = (product) => {
   if (product.variants && product.variants.length > 0) {
     return product.variants.map((v) => ({
       colorCode: v.colorCode || '',
       colorName: v.colorName || '',
+      originalColorCode: v.colorCode || '',
+      originalColorName: v.colorName || '',
       delta: '',
       currentQty: v.quantity || 0,
+      ...DEFAULT_REASON,
     }));
   }
-  return [{ colorCode: '', colorName: '', delta: '', currentQty: product.quantity || 0 }];
+  return [{
+    colorCode: '',
+    colorName: '',
+    originalColorCode: '',
+    originalColorName: '',
+    delta: '',
+    currentQty: product.quantity || 0,
+    ...DEFAULT_REASON,
+  }];
 };
 
 const getTotalDelta = (deltaVariants) =>
@@ -61,6 +76,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
     returnDescription: initialData?.returnDescription ?? '',
   });
   const [error, setError] = useState('');
+  const [hasVariantConflicts, setHasVariantConflicts] = useState(false);
 
   const setField = (field, val) => setFormData((d) => ({ ...d, [field]: val }));
   const totalQty = variants.reduce((s, v) => s + (parseInt(v.quantity) || 0), 0);
@@ -71,6 +87,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
     if (!formData.brand.trim()) { setError('Marka zorunludur.'); return; }
     if (!formData.category) { setError('Kategori seçilmelidir.'); return; }
     if (totalQty === 0) { setError('En az 1 adet ürün eklenmelidir.'); return; }
+    if (hasVariantConflicts) { setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez.'); return; }
     if (!stockReasonData.stockReason) { setError('Stok giriş sebebi seçilmelidir.'); return; }
     if (stockReasonData.stockReason === 'return' && !stockReasonData.returnReason) {
       setError('İade sebebi seçilmelidir.'); return;
@@ -167,7 +184,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
         mode="increase"
       />
 
-      <VariantsEditor variants={variants} onChange={setVariants} mode="quantity" />
+      <VariantsEditor variants={variants} onChange={setVariants} mode="quantity" onConflictsChange={setHasVariantConflicts} />
 
       <div className="edit-form-actions">
         <div className="edit-action-buttons">
@@ -184,7 +201,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
 }
 
 // ---- Stok Güncelleme Formu ----
-function StockUpdateForm({ cachedProducts, onAdd, onCancel, initialData = null, onSave = null }) {
+function StockUpdateForm({ cachedProducts, availableBrands = [], queue = [], onAdd, onCancel, initialData = null, onSave = null }) {
   const isEditMode = initialData !== null;
 
   // Edit modunda başlangıç ürününü önbellekten bul
@@ -196,39 +213,37 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel, initialData = null, 
   const [search, setSearch] = useState('');
   const [deltaVariants, setDeltaVariants] = useState(() => {
     if (isEditMode && initialProduct && initialData.deltaVariants) {
-      // Ürünün güncel varyantlarını al (currentQty için), kaydedilen delta değerlerini üstüne uygula
       const current = buildDeltaFromProduct(initialProduct);
       return current.map((cv) => {
         const saved = initialData.deltaVariants.find(
           (sv) => sv.colorCode === cv.colorCode && sv.colorName === cv.colorName
         );
-        return { ...cv, delta: saved ? String(saved.delta) : '' };
+        return {
+          ...cv,
+          delta: saved ? String(saved.delta) : '',
+          stockReason: saved?.stockReason ?? 'purchase',
+          returnReason: saved?.returnReason ?? '',
+          returnDescription: saved?.returnDescription ?? '',
+        };
       });
     }
     return [];
   });
-  const [stockReasonData, setStockReasonData] = useState({
-    stockReason: initialData?.stockReason ?? 'purchase',
-    returnReason: initialData?.returnReason ?? '',
-    returnDescription: initialData?.returnDescription ?? '',
-  });
   const [error, setError] = useState('');
+  const [hasVariantConflicts, setHasVariantConflicts] = useState(false);
+
+  // Ürün bilgisi düzenleme (isim / marka / kategori override)
+  const [editingProductInfo, setEditingProductInfo] = useState(false);
+  const [infoName, setInfoName] = useState(initialProduct?.name || '');
+  const [infoBrand, setInfoBrand] = useState(initialProduct?.brand || '');
+  const [infoCategory, setInfoCategory] = useState(initialProduct?.category || '');
 
   const totalDelta = getTotalDelta(deltaVariants);
-  const reasonMode = totalDelta >= 0 ? 'increase' : 'decrease';
 
-  // Delta işareti değiştiğinde stok sebebini sıfırla
-  const prevReasonModeRef = useRef(reasonMode);
-  useEffect(() => {
-    if (prevReasonModeRef.current !== reasonMode) {
-      prevReasonModeRef.current = reasonMode;
-      setStockReasonData({
-        stockReason: reasonMode === 'increase' ? 'purchase' : 'sold',
-        returnReason: '',
-        returnDescription: '',
-      });
-    }
-  }, [reasonMode]);
+  // Seçili ürün için kuyruktaki bekleyen işlem sayısı
+  const pendingCount = selectedProduct
+    ? queue.filter((e) => e.type === 'stock_update' && e.data?.productId === selectedProduct.id).length
+    : 0;
 
   const sortedProducts = [...cachedProducts].sort((a, b) =>
     (a.name || '').localeCompare(b.name || '', 'tr')
@@ -245,50 +260,132 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel, initialData = null, 
   });
 
   const selectProduct = (product) => {
+    // Bu ürün için kuyruktaki bekleyen işlemleri bul
+    const pendingEntries = queue.filter(
+      (e) => e.type === 'stock_update' && e.data?.productId === product.id
+    );
+
+    // Temel varyantları oluştur, ardından bekleyen delta'ları currentQty'ye uygula
+    const base = buildDeltaFromProduct(product);
+
+    let adjusted = base;
+    if (pendingEntries.length > 0) {
+      adjusted = base.map((v) => {
+        let effectiveQty = v.currentQty || 0;
+        for (const entry of pendingEntries) {
+          for (const dv of (entry.data.deltaVariants || [])) {
+            const matchCode = dv.originalColorCode ?? dv.colorCode;
+            const matchName = dv.originalColorName ?? dv.colorName;
+            if (
+              (v.originalColorCode || '') === (matchCode || '') &&
+              (v.originalColorName || '') === (matchName || '')
+            ) {
+              effectiveQty = Math.max(0, effectiveQty + (dv.delta || 0));
+            }
+          }
+        }
+        return { ...v, currentQty: effectiveQty };
+      });
+    }
+
     setSelectedProduct(product);
-    setDeltaVariants(buildDeltaFromProduct(product));
-    setStockReasonData({ stockReason: 'purchase', returnReason: '', returnDescription: '' });
+    setDeltaVariants(adjusted);
+    setInfoName(product.name || '');
+    setInfoBrand(product.brand || '');
+    setInfoCategory(product.category || '');
+    setEditingProductInfo(false);
     setError('');
   };
 
   const clearSelection = () => {
     setSelectedProduct(null);
     setDeltaVariants([]);
+    setEditingProductInfo(false);
     setError('');
   };
 
   const handleAdd = () => {
     setError('');
     if (!selectedProduct) { setError('Ürün seçilmelidir.'); return; }
-    if (totalDelta === 0) { setError('En az bir varyant için sıfırdan farklı adet girilmelidir.'); return; }
-    if (!stockReasonData.stockReason) { setError('Stok sebebi seçilmelidir.'); return; }
-    const needsReturn =
-      stockReasonData.stockReason === 'return' ||
-      stockReasonData.stockReason === 'return_to_supplier';
-    if (needsReturn && !stockReasonData.returnReason) {
-      setError('İade sebebi seçilmelidir.'); return;
+    if (hasVariantConflicts) { setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez.'); return; }
+
+    const finalName = infoName.trim() || selectedProduct.name;
+    const finalBrand = infoBrand.trim() || selectedProduct.brand || '';
+    const finalCategory = infoCategory || selectedProduct.category || '';
+
+    const hasInfoChange =
+      finalName !== selectedProduct.name ||
+      finalBrand !== (selectedProduct.brand || '') ||
+      finalCategory !== (selectedProduct.category || '');
+
+    // Delta sıfır olsa bile renk kodu/adı değişmişse veya varyant silinmek üzere işaretlenmişse anlamlı değişikliktir
+    const hasColorChange = deltaVariants.some(
+      (v) => !v.isNew && (
+        (v.colorCode || '') !== (v.originalColorCode || '') ||
+        (v.colorName || '') !== (v.originalColorName || '')
+      )
+    );
+    const hasQuantityChange = totalDelta !== 0;
+    const hasNewVariant = deltaVariants.some((v) => v.isNew && (parseInt(v.delta) || 0) > 0);
+    const hasDeletion = deltaVariants.some((v) => v.isDeleting);
+
+    if (!hasInfoChange && !hasColorChange && !hasQuantityChange && !hasNewVariant && !hasDeletion) {
+      setError('Herhangi bir değişiklik yapılmadan kuyruğa eklenemez.'); return;
     }
-    if (needsReturn && stockReasonData.returnReason === 'other' && !stockReasonData.returnDescription.trim()) {
-      setError('İade açıklaması girilmelidir.'); return;
+
+    // Per-variant stok sebebi validasyonu
+    for (let i = 0; i < deltaVariants.length; i++) {
+      const v = deltaVariants[i];
+      const delta = parseInt(v.delta) || 0;
+      if (delta === 0) continue;
+      const mode = delta > 0 ? 'increase' : 'decrease';
+      const validReasons = mode === 'increase'
+        ? ['purchase', 'return']
+        : ['sold', 'return_to_supplier'];
+      if (!validReasons.includes(v.stockReason)) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için stok sebebi seçilmelidir.`); return;
+      }
+      const needsReturn = v.stockReason === 'return' || v.stockReason === 'return_to_supplier';
+      if (needsReturn && !v.returnReason) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için iade sebebi seçilmelidir.`); return;
+      }
+      if (needsReturn && v.returnReason === 'other' && !(v.returnDescription || '').trim()) {
+        const label = v.colorName || v.colorCode || `${i + 1}. renk`;
+        setError(`"${label}" için iade açıklaması girilmelidir.`); return;
+      }
     }
 
     const data = {
       productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      brand: selectedProduct.brand || '',
-      category: selectedProduct.category || '',
-      stockReason: stockReasonData.stockReason,
-      returnReason: needsReturn ? stockReasonData.returnReason : null,
-      returnDescription:
-        needsReturn && stockReasonData.returnReason === 'other'
-          ? stockReasonData.returnDescription.trim()
-          : null,
+      productName: finalName,
+      brand: finalBrand,
+      category: finalCategory,
+      // Overrides: yalnızca orijinalden farklıysa eklenir
+      ...(finalName !== selectedProduct.name && { nameOverride: finalName }),
+      ...(finalBrand !== (selectedProduct.brand || '') && { brandOverride: finalBrand }),
+      ...(finalCategory !== (selectedProduct.category || '') && { categoryOverride: finalCategory }),
+      // Miktar değişikliği olmasa bile renk kodu/adı değişen varyantları da dahil et
       deltaVariants: deltaVariants
-        .filter((v) => v.delta !== '' && parseInt(v.delta) !== 0)
+        .filter((v) => {
+          const hasDelta = v.delta !== '' && parseInt(v.delta) !== 0;
+          const colorChanged = !v.isNew && (
+            (v.colorCode || '') !== (v.originalColorCode || '') ||
+            (v.colorName || '') !== (v.originalColorName || '')
+          );
+          return hasDelta || colorChanged || (v.isNew && (parseInt(v.delta) || 0) > 0);
+        })
         .map((v) => ({
           colorCode: v.colorCode,
           colorName: v.colorName,
+          originalColorCode: v.isNew ? null : (v.originalColorCode ?? v.colorCode),
+          originalColorName: v.isNew ? null : (v.originalColorName ?? v.colorName),
           delta: parseInt(v.delta) || 0,
+          stockReason: v.stockReason || null,
+          returnReason: v.returnReason || null,
+          returnDescription: v.returnDescription || null,
+          ...(v.isNew && { isNew: true }),
         })),
     };
 
@@ -388,9 +485,9 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel, initialData = null, 
         <>
           <div className="bulk-selected-product-bar">
             <div className="bulk-selected-badges">
-              <span className="bulk-product-badge">{selectedProduct.name}</span>
-              <span className="bulk-brand-badge">{selectedProduct.brand}</span>
-              <span className="bulk-category-badge">{selectedProduct.category}</span>
+              <span className="bulk-product-badge">{infoName || selectedProduct.name}</span>
+              {infoBrand && <span className="bulk-brand-badge">{infoBrand}</span>}
+              {infoCategory && <span className="bulk-category-badge">{infoCategory}</span>}
             </div>
             <button
               type="button"
@@ -401,16 +498,48 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel, initialData = null, 
             </button>
           </div>
 
+          {/* Bekleyen işlem uyarısı */}
+          {pendingCount > 0 && (
+            <div className="bulk-pending-warning">
+              ⚠ Bu ürün için kuyruğa eklenmiş {pendingCount} işlem var. Adet değerleri bekleyen işlemler uygulandıktan sonraki durumu yansıtır.
+            </div>
+          )}
+
+          {/* Ürün bilgisi düzenleme — kalem butonuyla açılır/kapanır */}
+          {editingProductInfo && (
+            <div className="bulk-product-info-edit">
+              <div className="bulk-product-info-edit-title">Ürün Bilgilerini Düzenle</div>
+              <div className="edit-form-group">
+                <label>Ürün Adı</label>
+                <input
+                  type="text"
+                  value={infoName}
+                  onChange={(e) => setInfoName(e.target.value)}
+                  placeholder={selectedProduct.name}
+                />
+              </div>
+              <div className="edit-form-group">
+                <label>Marka</label>
+                <BrandInput
+                  value={infoBrand}
+                  onChange={setInfoBrand}
+                  brands={availableBrands}
+                />
+              </div>
+              <div className="edit-form-group">
+                <label>Kategori</label>
+                <CategoryInput value={infoCategory} onChange={setInfoCategory} />
+              </div>
+            </div>
+          )}
+
           <VariantsEditor
             variants={deltaVariants}
             onChange={setDeltaVariants}
             mode="delta"
-          />
-
-          <StockReasonSelector
-            value={stockReasonData}
-            onChange={setStockReasonData}
-            mode={reasonMode}
+            onEditProductInfo={() => setEditingProductInfo((v) => !v)}
+            onConflictsChange={setHasVariantConflicts}
+            perVariantReason
           />
         </>
       )}
@@ -873,7 +1002,7 @@ function BulkProductEntry({ onClose }) {
   );
 
   // Mobilde kuyruk varsayılan kapalı, masaüstünde açık
-  const [queueOpen, setQueueOpen] = useState(() => window.innerWidth > 768);
+  const [queueOpen, setQueueOpen] = useState(false);
 
   // Kapatma isteği: form açıksa uyar
   const handleModalClose = () => {
@@ -942,6 +1071,8 @@ function BulkProductEntry({ onClose }) {
               ) : (
                 <StockUpdateForm
                   cachedProducts={cachedProducts}
+                  availableBrands={availableBrands}
+                  queue={queue}
                   onAdd={handleAdd}
                   onCancel={editingEntry ? handleCancelEdit : () => setShowForm(false)}
                   initialData={editingEntry?.type === 'stock_update' ? editingEntry.data : null}

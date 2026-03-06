@@ -140,8 +140,14 @@ const getLogDescription = (action, userName, productInfo, details) => {
       if (details.nameChanged) {
         updateDetails.push(`İsim değişti: "${details.nameChanged.from}" → "${details.nameChanged.to}"`);
       }
+      if (details.brandChanged) {
+        updateDetails.push(`Marka değişti: "${details.brandChanged.from}" → "${details.brandChanged.to}"`);
+      }
       if (details.categoryChanged) {
         updateDetails.push(`Kategori değişti: "${details.categoryChanged.from}" → "${details.categoryChanged.to}"`);
+      }
+      if (details.descriptionChanged) {
+        updateDetails.push(`Açıklama değişti`);
       }
       if (details.variantChanges) {
         const variantTexts = [];
