@@ -83,6 +83,221 @@
   font-weight: 500;
 }
 
+.edit-success-message {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 0 35px 20px 35px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ── Renk Çakışma Paneli ───────────────────────────────────────────────── */
+.edit-conflict-panel {
+  padding: 0 35px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.edit-conflict-panel-header {
+  display: flex;
+  gap: 12px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  padding: 14px 16px;
+  align-items: flex-start;
+}
+
+.edit-conflict-icon {
+  font-size: 1.4rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.edit-conflict-panel-header strong {
+  display: block;
+  color: #92400e;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.edit-conflict-panel-header p {
+  margin: 0;
+  color: #78350f;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.edit-conflict-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.edit-conflict-desc {
+  font-size: 0.88rem;
+  color: #374151;
+}
+
+.edit-conflict-code {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.edit-conflict-variants {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.edit-conflict-side {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.edit-conflict-side.existing {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.edit-conflict-side.new {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.edit-conflict-side-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.edit-conflict-side-value {
+  font-size: 0.88rem;
+  color: #111827;
+  word-break: break-word;
+}
+
+.edit-conflict-arrow {
+  font-size: 1rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.edit-conflict-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.edit-conflict-option-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 9px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  text-align: left;
+}
+
+.edit-conflict-option-btn:hover {
+  border-color: #667eea;
+  background: #f5f3ff;
+}
+
+.edit-conflict-option-btn.selected {
+  border-color: #667eea;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.edit-conflict-option-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4f46e5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.edit-conflict-option-desc {
+  font-size: 0.78rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.edit-conflict-option-btn.selected .edit-conflict-option-desc {
+  color: #4338ca;
+}
+
+.edit-conflict-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .edit-conflict-panel {
+    padding: 0 16px 20px;
+  }
+
+  .edit-conflict-variants {
+    flex-direction: column;
+  }
+
+  .edit-conflict-arrow {
+    transform: rotate(90deg);
+    align-self: center;
+  }
+
+  .edit-conflict-options {
+    flex-direction: column;
+  }
+
+  .edit-conflict-option-btn {
+    min-width: 0;
+  }
+
+  .edit-conflict-actions {
+    flex-direction: column-reverse;
+  }
+
+  .edit-conflict-actions .edit-cancel-btn,
+  .edit-conflict-actions .edit-submit-btn {
+    width: 100%;
+  }
+}
+
 /* Created By Info */
 .edit-created-by {
   background: #f0f9ff;
@@ -1211,4 +1426,4 @@
   .stock-reason-form .form-group {
     margin-bottom: 12px;
   }
-} 
+}

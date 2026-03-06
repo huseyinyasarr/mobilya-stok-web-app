@@ -244,14 +244,14 @@ function ActivityLogs({ onClose }) {
     
     // İşlem türü filtresi
     if (actionFilter !== 'all') {
-      const actionMap = {
-        'created': 'PRODUCT_CREATED',
-        'updated': 'PRODUCT_UPDATED', 
-        'deleted': 'PRODUCT_DELETED'
+      const actionGroups = {
+        'created': ['PRODUCT_CREATED'],
+        'updated': ['PRODUCT_UPDATED', 'PRODUCT_QUANTITY_CHANGED'],
+        'deleted': ['PRODUCT_DELETED'],
       };
-      
-      if (actionMap[actionFilter]) {
-        filtered = filtered.filter(log => log.action === actionMap[actionFilter]);
+      const group = actionGroups[actionFilter];
+      if (group) {
+        filtered = filtered.filter(log => group.includes(log.action));
       }
     }
     
@@ -300,6 +300,7 @@ function ActivityLogs({ onClose }) {
       case 'PRODUCT_CREATED':
         return '➕';
       case 'PRODUCT_UPDATED':
+      case 'PRODUCT_QUANTITY_CHANGED':
         return '✏️';
       case 'PRODUCT_DELETED':
         return '🗑️';
@@ -314,6 +315,7 @@ function ActivityLogs({ onClose }) {
       case 'PRODUCT_CREATED':
         return 'action-created';
       case 'PRODUCT_UPDATED':
+      case 'PRODUCT_QUANTITY_CHANGED':
         return 'action-updated';
       case 'PRODUCT_DELETED':
         return 'action-deleted';

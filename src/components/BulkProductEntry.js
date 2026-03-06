@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ref, push, runTransaction } from 'firebase/database';
+import { ref, runTransaction } from 'firebase/database';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { createLog, LOG_ACTIONS } from '../utils/logging';
+import { saveProduct, saveProductResolved, applyConflictResolutions } from '../utils/productService';
 import {
   getQueue,
   addToQueue,
@@ -12,6 +13,7 @@ import {
   getProductsCache,
 } from '../utils/offlineQueue';
 import { VariantsEditor, StockReasonSelector, BrandInput, CategoryInput } from './ProductFormFields';
+import ConfirmDialog from './ConfirmDialog';
 import './ProductEditModal.css';
 import './BulkProductEntry.css';
 
@@ -37,13 +39,29 @@ const getProductStock = (product) => {
 };
 
 // ---- Yeni Ürün Formu ----
-function NewProductForm({ onAdd, onCancel, brands = [] }) {
+function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSave = null }) {
+  const isEditMode = initialData !== null;
+
   const [formData, setFormData] = useState({
-    name: '', brand: '', category: 'yatak', description: '',
+    name: initialData?.name ?? '',
+    brand: initialData?.brand ?? '',
+    category: initialData?.category ?? 'yatak',
+    description: initialData?.description ?? '',
   });
-  const [variants, setVariants] = useState([{ colorCode: '', colorName: '', quantity: '' }]);
+  const [variants, setVariants] = useState(() => {
+    if (initialData?.variants?.length > 0) {
+      return initialData.variants.map((v) => ({
+        colorCode: v.colorCode ?? '',
+        colorName: v.colorName ?? '',
+        quantity: v.quantity ?? '',
+      }));
+    }
+    return [{ colorCode: '', colorName: '', quantity: '' }];
+  });
   const [stockReasonData, setStockReasonData] = useState({
-    stockReason: 'purchase', returnReason: '', returnDescription: '',
+    stockReason: initialData?.stockReason ?? 'purchase',
+    returnReason: initialData?.returnReason ?? '',
+    returnDescription: initialData?.returnDescription ?? '',
   });
   const [error, setError] = useState('');
 
@@ -68,32 +86,40 @@ function NewProductForm({ onAdd, onCancel, brands = [] }) {
       setError('İade açıklaması girilmelidir.'); return;
     }
 
-    onAdd({
-      type: 'new_product',
-      data: {
-        name: formData.name.trim(),
-        brand: formData.brand.trim(),
-        category: formData.category,
-        description: formData.description.trim(),
-        stockReason: stockReasonData.stockReason,
-        returnReason:
-          stockReasonData.stockReason === 'return' ? stockReasonData.returnReason : null,
-        returnDescription:
-          stockReasonData.stockReason === 'return' &&
-          stockReasonData.returnReason === 'other'
-            ? stockReasonData.returnDescription.trim()
-            : null,
-        variants: variants.map((v) => ({
-          colorCode: v.colorCode.trim(),
-          colorName: v.colorName.trim(),
-          quantity: parseInt(v.quantity) || 0,
-        })),
-      },
-    });
+    const data = {
+      name: formData.name.trim(),
+      brand: formData.brand.trim(),
+      category: formData.category,
+      description: formData.description.trim(),
+      stockReason: stockReasonData.stockReason,
+      returnReason:
+        stockReasonData.stockReason === 'return' ? stockReasonData.returnReason : null,
+      returnDescription:
+        stockReasonData.stockReason === 'return' &&
+        stockReasonData.returnReason === 'other'
+          ? stockReasonData.returnDescription.trim()
+          : null,
+      variants: variants.map((v) => ({
+        colorCode: v.colorCode.trim(),
+        colorName: v.colorName.trim(),
+        quantity: parseInt(v.quantity) || 0,
+      })),
+    };
+
+    if (isEditMode && onSave) {
+      onSave(data);
+    } else {
+      onAdd({ type: 'new_product', data });
+    }
   };
 
   return (
     <div className="bulk-form-panel">
+      {isEditMode && (
+        <div className="bulk-edit-mode-banner">
+          ✏ Düzenleme modu — değişiklikler kuyruğa uygulanacak
+        </div>
+      )}
       {error && (
         <div className="edit-error-message bulk-inline-error">{error}</div>
       )}
@@ -152,7 +178,7 @@ function NewProductForm({ onAdd, onCancel, brands = [] }) {
             İptal
           </button>
           <button type="button" className="edit-submit-btn" onClick={handleAdd}>
-            Kuyruğa Ekle
+            {isEditMode ? 'Güncelle' : 'Kuyruğa Ekle'}
           </button>
         </div>
       </div>
@@ -161,12 +187,33 @@ function NewProductForm({ onAdd, onCancel, brands = [] }) {
 }
 
 // ---- Stok Güncelleme Formu ----
-function StockUpdateForm({ cachedProducts, onAdd, onCancel }) {
-  const [selectedProduct, setSelectedProduct] = useState(null);
+function StockUpdateForm({ cachedProducts, onAdd, onCancel, initialData = null, onSave = null }) {
+  const isEditMode = initialData !== null;
+
+  // Edit modunda başlangıç ürününü önbellekten bul
+  const initialProduct = isEditMode && initialData.productId
+    ? cachedProducts.find((p) => p.id === initialData.productId) ?? null
+    : null;
+
+  const [selectedProduct, setSelectedProduct] = useState(initialProduct);
   const [search, setSearch] = useState('');
-  const [deltaVariants, setDeltaVariants] = useState([]);
+  const [deltaVariants, setDeltaVariants] = useState(() => {
+    if (isEditMode && initialProduct && initialData.deltaVariants) {
+      // Ürünün güncel varyantlarını al (currentQty için), kaydedilen delta değerlerini üstüne uygula
+      const current = buildDeltaFromProduct(initialProduct);
+      return current.map((cv) => {
+        const saved = initialData.deltaVariants.find(
+          (sv) => sv.colorCode === cv.colorCode && sv.colorName === cv.colorName
+        );
+        return { ...cv, delta: saved ? String(saved.delta) : '' };
+      });
+    }
+    return [];
+  });
   const [stockReasonData, setStockReasonData] = useState({
-    stockReason: 'purchase', returnReason: '', returnDescription: '',
+    stockReason: initialData?.stockReason ?? 'purchase',
+    returnReason: initialData?.returnReason ?? '',
+    returnDescription: initialData?.returnDescription ?? '',
   });
   const [error, setError] = useState('');
 
@@ -228,28 +275,31 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel }) {
       setError('İade açıklaması girilmelidir.'); return;
     }
 
-    onAdd({
-      type: 'stock_update',
-      data: {
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        brand: selectedProduct.brand || '',
-        category: selectedProduct.category || '',
-        stockReason: stockReasonData.stockReason,
-        returnReason: needsReturn ? stockReasonData.returnReason : null,
-        returnDescription:
-          needsReturn && stockReasonData.returnReason === 'other'
-            ? stockReasonData.returnDescription.trim()
-            : null,
-        deltaVariants: deltaVariants
-          .filter((v) => v.delta !== '' && parseInt(v.delta) !== 0)
-          .map((v) => ({
-            colorCode: v.colorCode,
-            colorName: v.colorName,
-            delta: parseInt(v.delta) || 0,
-          })),
-      },
-    });
+    const data = {
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      brand: selectedProduct.brand || '',
+      category: selectedProduct.category || '',
+      stockReason: stockReasonData.stockReason,
+      returnReason: needsReturn ? stockReasonData.returnReason : null,
+      returnDescription:
+        needsReturn && stockReasonData.returnReason === 'other'
+          ? stockReasonData.returnDescription.trim()
+          : null,
+      deltaVariants: deltaVariants
+        .filter((v) => v.delta !== '' && parseInt(v.delta) !== 0)
+        .map((v) => ({
+          colorCode: v.colorCode,
+          colorName: v.colorName,
+          delta: parseInt(v.delta) || 0,
+        })),
+    };
+
+    if (isEditMode && onSave) {
+      onSave(data);
+    } else {
+      onAdd({ type: 'stock_update', data });
+    }
   };
 
   if (cachedProducts.length === 0) {
@@ -269,6 +319,11 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel }) {
 
   return (
     <div className="bulk-form-panel">
+      {isEditMode && (
+        <div className="bulk-edit-mode-banner">
+          ✏ Düzenleme modu — değişiklikler kuyruğa uygulanacak
+        </div>
+      )}
       {error && (
         <div className="edit-error-message bulk-inline-error">{error}</div>
       )}
@@ -383,22 +438,54 @@ function StockUpdateForm({ cachedProducts, onAdd, onCancel }) {
 }
 
 // ---- Kuyruk Kartı ----
-function QueueCard({ entry, onRemove }) {
+function QueueCard({ entry, onRemove, onEdit, onResolveConflict }) {
   const [expanded, setExpanded] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolutions, setResolutions] = useState([]);
 
   const isNew = entry.type === 'new_product';
+  const isConflict = entry.status === 'conflict' && entry.conflictDetails?.length > 0;
   const d = entry.data;
+  const canEdit = entry.status !== 'success' && entry.status !== 'syncing';
+  const allResolved = resolutions.length > 0 && resolutions.every((r) => r !== null);
 
   const statusLabel = {
     pending: 'Bekliyor',
     syncing: 'Gönderiliyor...',
     success: 'Tamamlandı',
     error: 'Hata',
+    conflict: '⚠ Renk Çakışması',
   }[entry.status] || 'Bekliyor';
+
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    if (isConflict) {
+      setResolutions(new Array(entry.conflictDetails.length).fill(null));
+      setResolving(true);
+      setExpanded(true);
+    } else {
+      onEdit(entry);
+    }
+  };
+
+  const handleHeaderClick = () => {
+    if (resolving) setResolving(false);
+    setExpanded((v) => !v);
+  };
+
+  const handleResolutionChange = (i, val) =>
+    setResolutions((prev) => { const n = [...prev]; n[i] = val; return n; });
+
+  const handleConflictConfirm = (e) => {
+    e.stopPropagation();
+    onResolveConflict(entry.id, entry.conflictDetails, resolutions);
+    setResolving(false);
+    setExpanded(false);
+  };
 
   return (
     <div className={`bulk-queue-card status-${entry.status}`}>
-      <div className="bulk-queue-card-header" onClick={() => setExpanded((e) => !e)}>
+      <div className="bulk-queue-card-header" onClick={handleHeaderClick}>
         <div className="bulk-queue-card-title">
           <span className={`bulk-type-badge ${isNew ? 'new' : 'update'}`}>
             {isNew ? 'Yeni Ürün' : 'Stok Güncelleme'}
@@ -408,14 +495,25 @@ function QueueCard({ entry, onRemove }) {
         </div>
         <div className="bulk-queue-card-meta">
           <span className={`bulk-status-badge ${entry.status}`}>{statusLabel}</span>
-          {entry.status !== 'success' && entry.status !== 'syncing' && (
-            <button
-              className="bulk-remove-queue-btn"
-              onClick={(e) => { e.stopPropagation(); onRemove(entry.id); }}
-              title="Kuyruktan çıkar"
-            >
-              ✕
-            </button>
+          {canEdit && (
+            <>
+              <button
+                className={`bulk-edit-queue-btn${isConflict ? ' conflict-edit' : ''}`}
+                onClick={handleEditClick}
+                title={isConflict ? 'Çakışmayı çöz ve düzenle' : 'Düzenle'}
+              >
+                {isConflict ? (
+                  <><span className="bulk-edit-pencil-icon">✏</span> Düzenle</>
+                ) : '✏'}
+              </button>
+              <button
+                className="bulk-remove-queue-btn"
+                onClick={(e) => { e.stopPropagation(); onRemove(entry.id); }}
+                title="Kuyruktan çıkar"
+              >
+                ✕
+              </button>
+            </>
           )}
           <span className="bulk-expand-icon">{expanded ? '▲' : '▼'}</span>
         </div>
@@ -423,57 +521,182 @@ function QueueCard({ entry, onRemove }) {
 
       {expanded && (
         <div className="bulk-queue-card-details">
-          {isNew ? (
-            <div className="bulk-detail-grid">
-              <span className="bulk-detail-label">Kategori:</span>
-              <span>{d.category}</span>
-              <span className="bulk-detail-label">Stok Sebebi:</span>
-              <span>{d.stockReason === 'purchase' ? 'Satın Alım' : 'Ürün İade'}</span>
-              <span className="bulk-detail-label">Toplam Adet:</span>
-              <span>{d.variants.reduce((s, v) => s + (v.quantity || 0), 0)} adet</span>
-              {d.description && (
-                <>
-                  <span className="bulk-detail-label">Açıklama:</span>
-                  <span>{d.description}</span>
-                </>
-              )}
-              <span className="bulk-detail-label">Varyantlar:</span>
-              <div className="bulk-detail-variants">
-                {d.variants.map((v, i) => (
-                  <span key={i} className="bulk-detail-variant-chip">
-                    {[v.colorCode, v.colorName].filter(Boolean).join(' ') || 'Renksiz'} — {v.quantity} adet
-                  </span>
-                ))}
+          {resolving && isConflict ? (
+            /* ── Inline çakışma çözüm paneli ── */
+            <div className="bulk-inline-conflict">
+              <div className="bulk-inline-conflict-header">
+                <span>⚠</span>
+                <div>
+                  <strong>Renk Varyantı Çakışması</strong>
+                  <p>Her çakışma için nasıl devam edeceğinizi seçin.</p>
+                </div>
+              </div>
+
+              {entry.conflictDetails.map((conflict, i) => (
+                <div key={i} className="edit-conflict-item">
+                  {conflict.type === 'code_name_mismatch' ? (
+                    <>
+                      <div className="edit-conflict-desc">
+                        Renk kodu{' '}
+                        <code className="edit-conflict-code">[{conflict.newVariant.colorCode}]</code>{' '}
+                        — isim uyuşmazlığı:
+                      </div>
+                      <div className="edit-conflict-variants">
+                        <div className="edit-conflict-side existing">
+                          <span className="edit-conflict-side-label">Kayıtlı</span>
+                          <span className="edit-conflict-side-value">"{conflict.existingVariant.colorName}"</span>
+                        </div>
+                        <div className="edit-conflict-arrow">↔</div>
+                        <div className="edit-conflict-side new">
+                          <span className="edit-conflict-side-label">Yeni</span>
+                          <span className="edit-conflict-side-value">"{conflict.newVariant.colorName}"</span>
+                        </div>
+                      </div>
+                      <div className="edit-conflict-options">
+                        <button
+                          type="button"
+                          className={`edit-conflict-option-btn${resolutions[i] === 'keep_existing_name' ? ' selected' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); handleResolutionChange(i, 'keep_existing_name'); }}
+                        >
+                          Kayıtlı adı koru
+                          <span className="edit-conflict-option-value">"{conflict.existingVariant.colorName}"</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`edit-conflict-option-btn${resolutions[i] === 'use_new_name' ? ' selected' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); handleResolutionChange(i, 'use_new_name'); }}
+                        >
+                          Yeni adı kullan
+                          <span className="edit-conflict-option-value">"{conflict.newVariant.colorName}"</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="edit-conflict-desc">
+                        Renk adı <strong>"{conflict.newVariant.colorName}"</strong> — kod uyuşmazlığı:
+                      </div>
+                      <div className="edit-conflict-variants">
+                        <div className="edit-conflict-side existing">
+                          <span className="edit-conflict-side-label">Kayıtlı</span>
+                          <span className="edit-conflict-side-value">
+                            kod [{conflict.existingVariant.colorCode}]
+                          </span>
+                        </div>
+                        <div className="edit-conflict-arrow">↔</div>
+                        <div className="edit-conflict-side new">
+                          <span className="edit-conflict-side-label">Yeni</span>
+                          <span className="edit-conflict-side-value">kod yok</span>
+                        </div>
+                      </div>
+                      <div className="edit-conflict-options">
+                        <button
+                          type="button"
+                          className={`edit-conflict-option-btn${resolutions[i] === 'same' ? ' selected' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); handleResolutionChange(i, 'same'); }}
+                        >
+                          Aynı renk say
+                          <span className="edit-conflict-option-desc">Stoku mevcut renge ekle</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`edit-conflict-option-btn${resolutions[i] === 'separate' ? ' selected' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); handleResolutionChange(i, 'separate'); }}
+                        >
+                          Ayrı renk olarak ekle
+                          <span className="edit-conflict-option-desc">Yeni varyant oluştur</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+
+              <div className="bulk-inline-conflict-actions">
+                <button
+                  type="button"
+                  className="edit-cancel-btn"
+                  onClick={(e) => { e.stopPropagation(); setResolving(false); }}
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  className="edit-submit-btn"
+                  disabled={!allResolved}
+                  onClick={handleConflictConfirm}
+                >
+                  Onayla ve Kuyruğa Ekle
+                </button>
               </div>
             </div>
           ) : (
-            <div className="bulk-detail-grid">
-              <span className="bulk-detail-label">Kategori:</span>
-              <span>{d.category}</span>
-              <span className="bulk-detail-label">Stok Sebebi:</span>
-              <span>
-                {{ purchase: 'Satın Alım', return: 'Ürün İade', sold: 'Satıldı', return_to_supplier: 'Firmaya İade' }[d.stockReason] || d.stockReason}
-              </span>
-              <span className="bulk-detail-label">Toplam Delta:</span>
-              <span className={getTotalDelta(d.deltaVariants) >= 0 ? 'bulk-positive' : 'bulk-negative'}>
-                {getTotalDelta(d.deltaVariants) >= 0 ? '+' : ''}{getTotalDelta(d.deltaVariants)} adet
-              </span>
-              <span className="bulk-detail-label">Varyantlar:</span>
-              <div className="bulk-detail-variants">
-                {d.deltaVariants.map((v, i) => (
-                  <span
-                    key={i}
-                    className={`bulk-detail-variant-chip ${v.delta > 0 ? 'positive' : v.delta < 0 ? 'negative' : ''}`}
-                  >
-                    {[v.colorCode, v.colorName].filter(Boolean).join(' ') || 'Tüm Stok'}:
-                    {' '}{v.delta > 0 ? '+' : ''}{v.delta}
+            /* ── Normal kart detayları ── */
+            <>
+              {isNew ? (
+                <div className="bulk-detail-grid">
+                  <span className="bulk-detail-label">Kategori:</span>
+                  <span>{d.category}</span>
+                  <span className="bulk-detail-label">Stok Sebebi:</span>
+                  <span>{d.stockReason === 'purchase' ? 'Satın Alım' : 'Ürün İade'}</span>
+                  <span className="bulk-detail-label">Toplam Adet:</span>
+                  <span>{d.variants.reduce((s, v) => s + (v.quantity || 0), 0)} adet</span>
+                  {d.description && (
+                    <>
+                      <span className="bulk-detail-label">Açıklama:</span>
+                      <span>{d.description}</span>
+                    </>
+                  )}
+                  <span className="bulk-detail-label">Varyantlar:</span>
+                  <div className="bulk-detail-variants">
+                    {d.variants.map((v, i) => (
+                      <span key={i} className="bulk-detail-variant-chip">
+                        {[v.colorCode, v.colorName].filter(Boolean).join(' ') || 'Renksiz'} — {v.quantity} adet
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bulk-detail-grid">
+                  <span className="bulk-detail-label">Kategori:</span>
+                  <span>{d.category}</span>
+                  <span className="bulk-detail-label">Stok Sebebi:</span>
+                  <span>
+                    {{ purchase: 'Satın Alım', return: 'Ürün İade', sold: 'Satıldı', return_to_supplier: 'Firmaya İade' }[d.stockReason] || d.stockReason}
                   </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {entry.errorMessage && (
-            <div className="bulk-entry-error">{entry.errorMessage}</div>
+                  <span className="bulk-detail-label">Toplam Delta:</span>
+                  <span className={getTotalDelta(d.deltaVariants) >= 0 ? 'bulk-positive' : 'bulk-negative'}>
+                    {getTotalDelta(d.deltaVariants) >= 0 ? '+' : ''}{getTotalDelta(d.deltaVariants)} adet
+                  </span>
+                  <span className="bulk-detail-label">Varyantlar:</span>
+                  <div className="bulk-detail-variants">
+                    {d.deltaVariants.map((v, i) => (
+                      <span
+                        key={i}
+                        className={`bulk-detail-variant-chip ${v.delta > 0 ? 'positive' : v.delta < 0 ? 'negative' : ''}`}
+                      >
+                        {[v.colorCode, v.colorName].filter(Boolean).join(' ') || 'Tüm Stok'}:
+                        {' '}{v.delta > 0 ? '+' : ''}{v.delta}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {entry.status === 'conflict' && entry.errorMessage && (
+                <div className="bulk-entry-conflict">
+                  <div className="bulk-entry-conflict-title">Renk varyantı çakışması:</div>
+                  {entry.errorMessage.split('\n').map((line, i) => (
+                    <div key={i} className="bulk-entry-conflict-line">• {line}</div>
+                  ))}
+                  <div className="bulk-entry-conflict-hint">
+                    ✏ "Düzenle" butonuna tıklayarak çakışmayı düzeltebilirsiniz.
+                  </div>
+                </div>
+              )}
+              {entry.status === 'error' && entry.errorMessage && (
+                <div className="bulk-entry-error">{entry.errorMessage}</div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -521,6 +744,8 @@ function BulkProductEntry({ onClose }) {
   const [showForm, setShowForm] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncSummary, setSyncSummary] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const cachedProducts = (() => {
     const cache = getProductsCache();
@@ -552,13 +777,59 @@ function BulkProductEntry({ onClose }) {
   };
 
   const handleRemove = (id) => {
-    removeFromQueue(id);
-    refreshQueue();
+    setConfirmDialog({
+      message: 'Bu girişi kuyruktan kaldırmak istediğinizden emin misiniz?',
+      onConfirm: () => { removeFromQueue(id); refreshQueue(); },
+    });
   };
+
+  const handleEditEntry = (entry) => {
+    setEditingEntry(entry);
+    setActiveTab(entry.type === 'new_product' ? 'new_product' : 'stock_update');
+    setShowForm(true);
+  };
+
+  const handleSaveEditedEntry = (updatedData) => {
+    updateQueueEntry(editingEntry.id, {
+      data: updatedData,
+      status: 'pending',
+      errorMessage: null,
+    });
+    refreshQueue();
+    setEditingEntry(null);
+    setShowForm(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntry(null);
+    setShowForm(false);
+  };
+
+  // QueueCard'dan gelen inline çakışma çözümü
+  const handleResolveConflict = useCallback((entryId, conflictDetails, resolutions) => {
+    const entry = getQueue().find((e) => e.id === entryId);
+    if (!entry) return;
+    const resolvedVariants = applyConflictResolutions(
+      entry.data.variants,
+      conflictDetails,
+      resolutions
+    );
+    updateQueueEntry(entryId, {
+      data: { ...entry.data, variants: resolvedVariants },
+      status: 'pending',
+      errorMessage: null,
+      conflictDetails: null,
+      conflictResolved: true,
+      conflictExistingProductId: entry.conflictExistingProductId,
+    });
+    refreshQueue();
+  }, [refreshQueue]);
 
   const handleSync = async () => {
     if (!isOnline) return;
-    const pending = getQueue().filter((e) => e.status === 'pending' || e.status === 'error');
+    const pending = getQueue().filter(
+      (e) => e.status === 'pending' || e.status === 'error' || e.status === 'conflict'
+    );
     if (pending.length === 0) return;
 
     setSyncing(true);
@@ -580,8 +851,12 @@ function BulkProductEntry({ onClose }) {
       } catch (err) {
         console.error('Senkronizasyon hatası:', err);
         updateQueueEntry(entry.id, {
-          status: 'error',
+          status: err.isConflict ? 'conflict' : 'error',
           errorMessage: err.message || 'Bilinmeyen hata',
+          ...(err.isConflict ? {
+            conflictDetails: err.conflicts,
+            conflictExistingProductId: err.existingProductId,
+          } : { conflictDetails: null }),
         });
         errorCount++;
       }
@@ -595,16 +870,31 @@ function BulkProductEntry({ onClose }) {
   };
 
   const pendingCount = queue.filter(
-    (e) => e.status === 'pending' || e.status === 'error'
+    (e) => e.status === 'pending' || e.status === 'error' || e.status === 'conflict'
   ).length;
 
   // Mobilde kuyruk varsayılan kapalı, masaüstünde açık
   const [queueOpen, setQueueOpen] = useState(() => window.innerWidth > 768);
 
+  // Kapatma isteği: form açıksa uyar
+  const handleModalClose = () => {
+    if (showForm) {
+      setConfirmDialog({
+        message: 'Formdaki değişiklikler kaydedilmeyecek. Çıkmak istiyor musunuz?',
+        confirmLabel: 'Çık',
+        cancelLabel: 'Devam Et',
+        variant: 'neutral',
+        onConfirm: onClose,
+      });
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <div
       className="bulk-modal-backdrop"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && handleModalClose()}
     >
       <div className="bulk-modal-content">
         {/* Header */}
@@ -616,7 +906,7 @@ function BulkProductEntry({ onClose }) {
               {isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
             </div>
           </div>
-          <button className="bulk-close-btn" onClick={onClose} disabled={syncing}>
+          <button className="bulk-close-btn" onClick={handleModalClose} disabled={syncing}>
             ✕
           </button>
         </div>
@@ -625,13 +915,13 @@ function BulkProductEntry({ onClose }) {
         <div className="bulk-tabs">
           <button
             className={`bulk-tab ${activeTab === 'new_product' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('new_product'); setShowForm(false); }}
+            onClick={() => { setActiveTab('new_product'); setShowForm(false); setEditingEntry(null); }}
           >
             Yeni Ürün
           </button>
           <button
             className={`bulk-tab ${activeTab === 'stock_update' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('stock_update'); setShowForm(false); }}
+            onClick={() => { setActiveTab('stock_update'); setShowForm(false); setEditingEntry(null); }}
           >
             Stok Güncelleme
           </button>
@@ -643,12 +933,20 @@ function BulkProductEntry({ onClose }) {
           <div className="bulk-form-area">
             {showForm ? (
               activeTab === 'new_product' ? (
-                <NewProductForm onAdd={handleAdd} onCancel={() => setShowForm(false)} brands={availableBrands} />
+                <NewProductForm
+                  onAdd={handleAdd}
+                  onCancel={editingEntry ? handleCancelEdit : () => setShowForm(false)}
+                  brands={availableBrands}
+                  initialData={editingEntry?.type === 'new_product' ? editingEntry.data : null}
+                  onSave={editingEntry?.type === 'new_product' ? handleSaveEditedEntry : null}
+                />
               ) : (
                 <StockUpdateForm
                   cachedProducts={cachedProducts}
                   onAdd={handleAdd}
-                  onCancel={() => setShowForm(false)}
+                  onCancel={editingEntry ? handleCancelEdit : () => setShowForm(false)}
+                  initialData={editingEntry?.type === 'stock_update' ? editingEntry.data : null}
+                  onSave={editingEntry?.type === 'stock_update' ? handleSaveEditedEntry : null}
                 />
               )
             ) : (
@@ -672,12 +970,21 @@ function BulkProductEntry({ onClose }) {
                 {queue.length > 0 && (
                   <span className="bulk-queue-count">{queue.length}</span>
                 )}
+                {queue.some((e) => e.status === 'conflict' || e.status === 'error') && (
+                  <span className="bulk-queue-issue-badge" title="Hata veya çakışma var">!</span>
+                )}
               </h3>
               <div className="bulk-queue-header-actions">
                 {queue.length > 0 && !syncing && queueOpen && (
                   <button
                     className="bulk-clear-all-btn"
-                    onClick={(e) => { e.stopPropagation(); clearQueue(); refreshQueue(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDialog({
+                        message: 'Kuyruktaki tüm girişler silinecek. Emin misiniz?',
+                        onConfirm: () => { clearQueue(); refreshQueue(); },
+                      });
+                    }}
                     title="Tüm kuyruğu temizle"
                   >
                     Tümünü Temizle
@@ -695,7 +1002,13 @@ function BulkProductEntry({ onClose }) {
               ) : (
                 <div className="bulk-queue-list">
                   {queue.map((entry) => (
-                    <QueueCard key={entry.id} entry={entry} onRemove={handleRemove} />
+                    <QueueCard
+                      key={entry.id}
+                      entry={entry}
+                      onRemove={handleRemove}
+                      onEdit={handleEditEntry}
+                      onResolveConflict={handleResolveConflict}
+                    />
                   ))}
                 </div>
               )}
@@ -705,7 +1018,7 @@ function BulkProductEntry({ onClose }) {
 
         {/* Alt bar */}
         <div className="bulk-modal-footer">
-          {!isOnline && (
+          {!isOnline && !showForm && (
             <div className="bulk-offline-warning">
               Çevrimdışı moddasınız. Girişler kaydedildi, internet bağlantısı geldiğinde senkronize edilebilir.
             </div>
@@ -714,14 +1027,16 @@ function BulkProductEntry({ onClose }) {
             <span className="bulk-pending-info">
               {pendingCount > 0 ? `${pendingCount} giriş bekliyor` : 'Kuyruk boş'}
             </span>
-            <button
-              className="bulk-sync-btn"
-              onClick={handleSync}
-              disabled={!isOnline || pendingCount === 0 || syncing}
-              title={!isOnline ? 'İnternet bağlantısı gereklidir' : ''}
-            >
-              {syncing ? 'Gönderiliyor...' : `Kaydet (${pendingCount})`}
-            </button>
+            {!showForm && (
+              <button
+                className="bulk-sync-btn"
+                onClick={handleSync}
+                disabled={!isOnline || pendingCount === 0 || syncing}
+                title={!isOnline ? 'İnternet bağlantısı gereklidir' : ''}
+              >
+                {syncing ? 'Gönderiliyor...' : `Kaydet (${pendingCount})`}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -733,6 +1048,17 @@ function BulkProductEntry({ onClose }) {
           onClose={() => setSyncSummary(null)}
         />
       )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+          onCancel={() => setConfirmDialog(null)}
+          confirmLabel={confirmDialog.confirmLabel || 'Sil'}
+          cancelLabel={confirmDialog.cancelLabel || 'İptal'}
+          variant={confirmDialog.variant || 'danger'}
+        />
+      )}
     </div>
   );
 }
@@ -741,67 +1067,53 @@ function BulkProductEntry({ onClose }) {
 
 async function syncNewProduct(entry, currentUser) {
   const d = entry.data;
-  const productsRef = ref(db, 'products');
-  const totalQuantity = d.variants.reduce((s, v) => s + v.quantity, 0);
-  const now = new Date().toISOString();
 
-  const stockEntry = {
-    date: now,
-    type: 'increase',
-    reason: d.stockReason,
-    quantity: totalQuantity,
-    remainingStock: totalQuantity,
-    variantChanges: d.variants.map((v) => ({
-      colorCode: v.colorCode || '',
-      colorName: v.colorName || '',
-      quantityChange: v.quantity,
-      oldQuantity: 0,
-      newQuantity: v.quantity,
-    })),
-    user: {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı',
-    },
-  };
-
-  if (d.stockReason === 'return') {
-    stockEntry.returnReason = d.returnReason;
-    if (d.returnReason === 'other' && d.returnDescription) {
-      stockEntry.returnDescription = d.returnDescription;
-    }
+  // Çakışma kullanıcı tarafından önceden çözüldüyse, direkt güncelleme yap
+  if (entry.conflictResolved && entry.conflictExistingProductId) {
+    await saveProductResolved({
+      existingProductId: entry.conflictExistingProductId,
+      name: d.name,
+      brand: d.brand,
+      resolvedVariants: d.variants,
+      stockReason: d.stockReason,
+      returnReason: d.returnReason || '',
+      returnDescription: d.returnDescription || '',
+      currentUser,
+    });
+    return;
   }
 
-  const productData = {
+  const result = await saveProduct({
     name: d.name,
     brand: d.brand,
     category: d.category,
     description: d.description || '',
     variants: d.variants,
-    totalQuantity,
-    createdAt: now,
-    lastUpdated: now,
-    createdBy: {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      displayName: currentUser.displayName || 'Bilinmeyen Kullanıcı',
-    },
-    stockHistory: [stockEntry],
-  };
-
-  const newRef = await push(productsRef, productData);
-
-  await createLog(
-    LOG_ACTIONS.PRODUCT_CREATED,
+    stockReason: d.stockReason,
+    returnReason: d.returnReason || '',
+    returnDescription: d.returnDescription || '',
     currentUser,
-    { id: newRef.key, name: d.name, brand: d.brand, category: d.category, totalQuantity },
-    {
-      stockReason: d.stockReason,
-      returnReason: d.stockReason === 'return' ? d.returnReason : null,
-      returnDescription:
-        d.stockReason === 'return' && d.returnReason === 'other' ? d.returnDescription : null,
-    }
-  );
+  });
+
+  if (result.action === 'conflict') {
+    const conflictMsg = buildConflictMessage(result.conflicts);
+    const err = new Error(conflictMsg);
+    err.isConflict = true;
+    err.conflicts = result.conflicts;
+    err.existingProductId = result.existingProductId;
+    throw err;
+  }
+}
+
+function buildConflictMessage(conflicts) {
+  return conflicts
+    .map((c) => {
+      if (c.type === 'code_name_mismatch') {
+        return `Renk kodu [${c.newVariant.colorCode}]: kayıtlı ad "${c.existingVariant.colorName}", girilen ad "${c.newVariant.colorName}"`;
+      }
+      return `Renk adı "${c.newVariant.colorName}": kayıtlıda renk kodu var [${c.existingVariant.colorCode}], yeni girişte yok`;
+    })
+    .join('\n');
 }
 
 async function syncStockUpdate(entry, currentUser) {
@@ -891,7 +1203,7 @@ async function syncStockUpdate(entry, currentUser) {
     const newTotal = updatedProduct.totalQuantity;
 
     await createLog(
-      LOG_ACTIONS.PRODUCT_QUANTITY_CHANGED,
+      LOG_ACTIONS.PRODUCT_UPDATED,
       currentUser,
       {
         id: d.productId,

@@ -1,0 +1,105 @@
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.confirm-dialog-box {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  padding: 28px 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.confirm-dialog-message {
+  margin: 0;
+  font-size: 0.97rem;
+  color: #111827;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.confirm-dialog-cancel-btn {
+  flex: 1;
+  padding: 9px 14px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.confirm-dialog-cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Onay butonu — kırmızı (silme gibi geri dönüşü olmayan işlemler) */
+.confirm-dialog-confirm-btn.danger {
+  flex: 1;
+  padding: 9px 14px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.confirm-dialog-confirm-btn.danger:hover {
+  background: #b91c1c;
+}
+
+/* Onay butonu — nötr (kapat/çık gibi işlemler) */
+.confirm-dialog-confirm-btn.neutral {
+  flex: 1;
+  padding: 9px 14px;
+  background: #374151;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.confirm-dialog-confirm-btn.neutral:hover {
+  background: #1f2937;
+}
+
+@media (max-width: 480px) {
+  .confirm-dialog-box {
+    padding: 22px 18px 18px;
+  }
+
+  .confirm-dialog-actions {
+    flex-direction: column;
+  }
+
+  .confirm-dialog-cancel-btn,
+  .confirm-dialog-confirm-btn.danger,
+  .confirm-dialog-confirm-btn.neutral {
+    width: 100%;
+  }
+}
