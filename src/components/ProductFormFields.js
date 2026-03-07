@@ -144,7 +144,7 @@ export function VariantsEditor({ variants, onChange, mode = 'quantity', disabled
     <div className="edit-variants-section">
       <div className="edit-variants-header">
         <label>
-          Renk Çeşitleri{mode === 'quantity' ? ' *' : ''}
+          Çeşitler{mode === 'quantity' ? ' *' : ''}
         </label>
         <div className="edit-variants-header-right">
           {mode === 'delta' && onEditProductInfo && (

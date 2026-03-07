@@ -69,10 +69,64 @@
   color: #1a202c;
 }
 
+.report-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
 .report-header-subtitle {
   font-size: 0.95rem;
   font-weight: 500;
   color: #64748b;
+}
+
+/* ─── PDF İndir Butonu ─── */
+.report-pdf-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.report-pdf-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+}
+
+.report-pdf-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.report-pdf-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.report-pdf-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: pdfSpin 0.7s linear infinite;
+}
+
+@keyframes pdfSpin {
+  to { transform: rotate(360deg); }
 }
 
 .report-controls {
@@ -365,11 +419,20 @@
     font-size: 1.15rem;
   }
 
-  .report-header-subtitle {
+  .report-header-right {
     width: 100%;
     order: 3;
-    font-size: 0.85rem;
     margin-top: 4px;
+    justify-content: space-between;
+  }
+
+  .report-header-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .report-pdf-btn {
+    padding: 7px 12px;
+    font-size: 0.82rem;
   }
 
   .report-controls {

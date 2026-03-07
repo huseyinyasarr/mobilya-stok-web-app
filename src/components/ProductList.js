@@ -245,7 +245,7 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
                 </div>
                 
                 <div className="list-variants-detail">
-                  {product.variants.map((variant, variantIndex) => {
+                  {[...product.variants].sort((a, b) => (a.varyans || '').localeCompare(b.varyans || '', 'tr')).map((variant, variantIndex) => {
                     const currentQuantity = variant.quantity || 0;
                     const colorPart = [variant.colorCode, variant.colorName].filter(Boolean).join(' - ') || null;
                     const varyansPart = (variant.varyans || '').trim() || null;
@@ -352,7 +352,7 @@ function ProductList({ products, loading, onProductsChange, viewMode = 'grid', s
             </div>
             
             <div className="variants-list">
-              {product.variants.map((variant, variantIndex) => {
+              {[...product.variants].sort((a, b) => (a.varyans || '').localeCompare(b.varyans || '', 'tr')).map((variant, variantIndex) => {
                 const currentQuantity = variant.quantity || 0;
                 const colorPart = [variant.colorCode, variant.colorName].filter(Boolean).join(' - ') || null;
                 const varyansPart = (variant.varyans || '').trim() || null;

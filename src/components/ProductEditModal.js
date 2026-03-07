@@ -388,7 +388,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
       return;
     }
     if (hasVariantConflicts) {
-      setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez.');
+      setError('Çeşitlerdeki çakışmalar çözülmeden devam edilemez.');
       return;
     }
 
@@ -664,7 +664,7 @@ function ProductEditModal({ product, onClose, onProductUpdated, brands = [] }) {
             )}
           </div>
 
-          {/* Renk Çeşitleri — Toplu Giriş ile aynı delta modu + per-variant sebep */}
+          {/* Çeşitler — Toplu Giriş ile aynı delta modu + per-variant sebep */}
           <VariantsEditor
             variants={deltaVariants}
             onChange={setDeltaVariants}

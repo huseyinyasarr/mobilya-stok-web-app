@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, onValue, orderByChild, query } from 'firebase/database';
 import { db } from '../firebase';
+import { generateStockPDF } from '../utils/pdfExport';
 import './ReportPage.css';
 
 const SORT_OPTIONS = [
@@ -32,6 +33,7 @@ function ReportPage() {
   const [viewMode, setViewMode] = useState('list');
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   React.useEffect(() => {
     const productsRef = ref(db, 'products');
@@ -111,6 +113,26 @@ function ReportPage() {
 
   const getProductQty = (p) => p.totalQuantity ?? p.quantity ?? 0;
 
+  const handleExportPDF = async () => {
+    setPdfLoading(true);
+    try {
+      await generateStockPDF({
+        groupedProducts,
+        groupBy,
+        viewMode,
+        filteredProducts,
+        selectedBrands,
+        selectedCategories,
+        sortBy,
+      });
+    } catch (err) {
+      console.error('PDF oluşturulamadı:', err);
+      alert('PDF oluşturulurken hata oluştu.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="report-page">
@@ -133,7 +155,22 @@ function ReportPage() {
           />
           <h1>Şeref Mobilya</h1>
         </div>
-        <span className="report-header-subtitle">Özet / Rapor</span>
+        <div className="report-header-right">
+          <span className="report-header-subtitle">Özet / Rapor</span>
+          <button
+            className="report-pdf-btn"
+            onClick={handleExportPDF}
+            disabled={pdfLoading || filteredProducts.length === 0}
+            title="PDF olarak indir"
+          >
+            {pdfLoading ? (
+              <span className="report-pdf-spinner" />
+            ) : (
+              <span>📄</span>
+            )}
+            <span>{pdfLoading ? 'Hazırlanıyor...' : 'PDF İndir'}</span>
+          </button>
+        </div>
       </header>
 
       <div className="report-controls">
@@ -258,7 +295,7 @@ function ReportPage() {
                       </div>
                       {p.variants && p.variants.length > 0 && (
                         <div className="report-detail-variants">
-                          {p.variants.map((v, i) => {
+                          {[...p.variants].sort((a, b) => (a.varyans || '').localeCompare(b.varyans || '', 'tr')).map((v, i) => {
                             const colorInfo = [v.colorCode, v.colorName, v.varyans].filter(Boolean).join(' — ');
                             if (!colorInfo) return null;
                             return (

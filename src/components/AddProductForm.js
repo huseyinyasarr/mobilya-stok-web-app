@@ -184,7 +184,7 @@ function AddProductForm({ onClose, onProductAdded, brands = [] }) {
       }
     }
     if (getTotalQuantity() === 0) { setError('En az 1 adet ürün eklenmelidir'); return false; }
-    if (hasVariantConflicts) { setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez'); return false; }
+    if (hasVariantConflicts) { setError('Çeşitlerdeki çakışmalar çözülmeden devam edilemez'); return false; }
 
     // Per-variant stok sebebi validasyonu
     for (let i = 0; i < variants.length; i++) {

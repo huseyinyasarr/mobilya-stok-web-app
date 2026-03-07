@@ -217,7 +217,7 @@
   border: 1px solid #fdba74;
 }
 
-/* ===== Renk Çeşitleri — Mobil Responsive (hem normal hem toplu giriş) ===== */
+/* ===== Çeşitler — Mobil Responsive (hem normal hem toplu giriş) ===== */
 @media (max-width: 768px) {
   .edit-variants-section {
     padding: 12px 10px;

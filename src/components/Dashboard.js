@@ -345,7 +345,7 @@ function Dashboard() {
                   className="category-header" 
                   onClick={() => setShowCategoryDetails(!showCategoryDetails)}
                 >
-                  <h3>Kategori Detayları</h3>
+                  <h3>Kategorİ Detayları</h3>
                   <span className={`toggle-icon ${showCategoryDetails ? 'open' : ''}`}>▼</span>
                 </div>
                 

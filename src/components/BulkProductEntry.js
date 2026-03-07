@@ -92,7 +92,7 @@ function NewProductForm({ onAdd, onCancel, brands = [], initialData = null, onSa
     if (!formData.brand.trim()) { setError('Marka zorunludur.'); return; }
     if (!formData.category) { setError('Kategori seçilmelidir.'); return; }
     if (totalQty === 0) { setError('En az 1 adet ürün eklenmelidir.'); return; }
-    if (hasVariantConflicts) { setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez.'); return; }
+    if (hasVariantConflicts) { setError('Çeşitlerdeki çakışmalar çözülmeden devam edilemez.'); return; }
     if (!stockReasonData.stockReason) { setError('Stok giriş sebebi seçilmelidir.'); return; }
     if (stockReasonData.stockReason === 'return' && !stockReasonData.returnReason) {
       setError('İade sebebi seçilmelidir.'); return;
@@ -311,7 +311,7 @@ function StockUpdateForm({ cachedProducts, availableBrands = [], queue = [], onA
   const handleAdd = () => {
     setError('');
     if (!selectedProduct) { setError('Ürün seçilmelidir.'); return; }
-    if (hasVariantConflicts) { setError('Renk çeşitlerindeki çakışmalar çözülmeden devam edilemez.'); return; }
+    if (hasVariantConflicts) { setError('Çeşitlerdeki çakışmalar çözülmeden devam edilemez.'); return; }
 
     const finalName = infoName.trim() || selectedProduct.name;
     const finalBrand = infoBrand.trim() || selectedProduct.brand || '';
